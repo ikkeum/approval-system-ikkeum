@@ -1,6 +1,7 @@
 -- 20260414000006_org_management.sql
 -- handle_new_user trigger 확장: admin 초대 시 metadata(dept, role, manager_id) 반영.
 -- 기존 자체 signup 경로도 그대로 작동 (metadata 비면 기본값).
+-- 주석
 
 create or replace function public.handle_new_user()
 returns trigger
