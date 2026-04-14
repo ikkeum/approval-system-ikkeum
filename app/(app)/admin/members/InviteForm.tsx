@@ -86,6 +86,9 @@ export default function InviteForm({
             ))}
           </select>
         </Field>
+        <Field label="입사일 (선택)">
+          <input type="date" name="hire_date" style={input} />
+        </Field>
       </div>
 
       {state?.ok === false && (

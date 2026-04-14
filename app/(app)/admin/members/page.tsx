@@ -7,7 +7,7 @@ export default async function MembersPage() {
 
   const { data: members } = await supabase
     .from("profiles")
-    .select("id,email,name,dept,role,manager_id,created_at")
+    .select("id,email,name,dept,role,manager_id,hire_date,created_at")
     .order("created_at", { ascending: true });
 
   const list = members ?? [];
@@ -43,9 +43,10 @@ export default async function MembersPage() {
       <section style={card}>
         <header style={tableHeader}>
           <span style={{ flex: 1 }}>이름 / 이메일</span>
-          <span style={{ width: 120 }}>부서</span>
-          <span style={{ width: 100 }}>역할</span>
-          <span style={{ width: 160 }}>매니저</span>
+          <span style={{ width: 100 }}>부서</span>
+          <span style={{ width: 90 }}>역할</span>
+          <span style={{ width: 140 }}>매니저</span>
+          <span style={{ width: 110 }}>입사일</span>
           <span style={{ width: 140 }}></span>
         </header>
 

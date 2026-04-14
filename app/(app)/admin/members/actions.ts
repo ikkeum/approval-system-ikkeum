@@ -22,12 +22,19 @@ async function assertAdmin(): Promise<{ userId: string } | { error: string }> {
 
 const RoleEnum = z.enum(["member", "manager", "admin"]);
 
+const DateStr = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .optional()
+  .or(z.literal(""));
+
 const InviteInput = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(40),
   dept: z.string().max(40).optional(),
   role: RoleEnum.default("member"),
   manager_id: z.string().uuid().optional().or(z.literal("")),
+  hire_date: DateStr,
 });
 
 export type InviteState =
@@ -48,6 +55,7 @@ export async function inviteMemberAction(
     dept: formData.get("dept") || undefined,
     role: formData.get("role") || "member",
     manager_id: formData.get("manager_id") || "",
+    hire_date: formData.get("hire_date") || "",
   });
   if (!parsed.success) {
     return { ok: false, error: "입력값을 확인해주세요." };
@@ -55,6 +63,7 @@ export async function inviteMemberAction(
 
   const { email, name, dept, role } = parsed.data;
   const manager_id = parsed.data.manager_id || null;
+  const hire_date = parsed.data.hire_date || null;
 
   const admin = createAdminClient();
   const siteUrl =
@@ -66,6 +75,7 @@ export async function inviteMemberAction(
       dept: dept ?? null,
       role,
       manager_id,
+      hire_date,
     },
     redirectTo: `${siteUrl}/auth/confirm?next=/dashboard`,
   });
@@ -90,6 +100,7 @@ const UpdateInput = z.object({
   dept: z.string().max(40).optional().or(z.literal("")),
   role: RoleEnum,
   manager_id: z.string().uuid().optional().or(z.literal("")),
+  hire_date: DateStr,
 });
 
 export async function updateMemberAction(
@@ -103,6 +114,7 @@ export async function updateMemberAction(
     dept: formData.get("dept") || "",
     role: formData.get("role"),
     manager_id: formData.get("manager_id") || "",
+    hire_date: formData.get("hire_date") || "",
   });
   if (!parsed.success) return { error: "입력값을 확인해주세요." };
 
@@ -113,6 +125,7 @@ export async function updateMemberAction(
       dept: parsed.data.dept || null,
       role: parsed.data.role,
       manager_id: parsed.data.manager_id || null,
+      hire_date: parsed.data.hire_date || null,
     })
     .eq("id", parsed.data.id);
 

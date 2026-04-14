@@ -12,6 +12,7 @@ type Member = {
   dept: string | null;
   role: "member" | "manager" | "admin";
   manager_id: string | null;
+  hire_date: string | null;
 };
 
 const ROLE_LABEL: Record<Member["role"], string> = {
@@ -53,13 +54,16 @@ export default function MemberRow({
           <div style={{ fontWeight: 600 }}>{member.name}</div>
           <div style={{ fontSize: 12, color: "#6B7280" }}>{member.email}</div>
         </div>
-        <div style={{ width: 120, color: "#4B5563" }}>
+        <div style={{ width: 100, color: "#4B5563" }}>
           {member.dept ?? "-"}
         </div>
-        <div style={{ width: 100 }}>
+        <div style={{ width: 90 }}>
           <span style={roleBadge(member.role)}>{ROLE_LABEL[member.role]}</span>
         </div>
-        <div style={{ width: 160, color: "#4B5563" }}>{managerName}</div>
+        <div style={{ width: 140, color: "#4B5563" }}>{managerName}</div>
+        <div style={{ width: 110, color: "#4B5563", fontSize: 12 }}>
+          {member.hire_date ?? "-"}
+        </div>
         <div style={{ width: 140, textAlign: "right" }}>
           <button onClick={() => setEditing(true)} style={btnMini}>
             수정
@@ -97,12 +101,12 @@ export default function MemberRow({
         name="dept"
         defaultValue={member.dept ?? ""}
         placeholder="부서"
-        style={{ ...input, width: 120 }}
+        style={{ ...input, width: 100 }}
       />
       <select
         name="role"
         defaultValue={member.role}
-        style={{ ...input, width: 100 }}
+        style={{ ...input, width: 90 }}
       >
         <option value="member">멤버</option>
         <option value="manager">매니저</option>
@@ -111,7 +115,7 @@ export default function MemberRow({
       <select
         name="manager_id"
         defaultValue={member.manager_id ?? ""}
-        style={{ ...input, width: 160 }}
+        style={{ ...input, width: 140 }}
       >
         <option value="">없음</option>
         {managerCandidates.map((c) => (
@@ -120,6 +124,12 @@ export default function MemberRow({
           </option>
         ))}
       </select>
+      <input
+        type="date"
+        name="hire_date"
+        defaultValue={member.hire_date ?? ""}
+        style={{ ...input, width: 110 }}
+      />
       <div
         style={{
           display: "flex",

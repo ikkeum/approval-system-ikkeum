@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const BASE_ITEMS = [
-  { href: "/dashboard", icon: "⬚", label: "대시보드" },
+  { href: "/dashboard", icon: "▦", label: "대시보드" },
   { href: "/approvals", icon: "✓", label: "결재함" },
   { href: "/mydocs", icon: "◎", label: "내 문서" },
   { href: "/profile", icon: "◉", label: "프로필" },
