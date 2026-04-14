@@ -35,6 +35,9 @@ export default async function AdminLayout({
         <Link href="/admin/members" style={{ color: "#6B7280" }}>
           멤버
         </Link>
+        <Link href="/admin/teams" style={{ color: "#6B7280" }}>
+          팀
+        </Link>
       </nav>
       {children}
     </>

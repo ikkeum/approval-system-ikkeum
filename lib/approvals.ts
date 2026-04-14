@@ -5,7 +5,26 @@ export type ApprovalStatus =
   | "REJECTED"
   | "CANCELED";
 
-export type ApprovalType = "leave" | "expense";
+export type ApprovalType =
+  | "leave"
+  | "expense"
+  | "leave_of_absence"
+  | "reinstatement"
+  | "employment_cert"
+  | "career_cert";
+
+export const APPROVAL_TYPES: {
+  key: ApprovalType;
+  label: string;
+  short: string;
+}[] = [
+  { key: "leave", label: "연차 신청", short: "연차" },
+  { key: "expense", label: "품의서 작성", short: "품의" },
+  { key: "leave_of_absence", label: "휴직원 신청", short: "휴직" },
+  { key: "reinstatement", label: "복직원 신청", short: "복직" },
+  { key: "employment_cert", label: "재직증명서 신청", short: "재직증명" },
+  { key: "career_cert", label: "경력증명서 신청", short: "경력증명" },
+];
 
 export type ApprovalRow = {
   id: number;
@@ -47,7 +66,6 @@ export const STATUS_STYLE: Record<
   CANCELED: { bg: "#F3F4F6", text: "#6B7280", border: "#D1D5DB" },
 };
 
-export const TYPE_KO: Record<ApprovalType, string> = {
-  leave: "연차",
-  expense: "품의",
-};
+export const TYPE_KO: Record<ApprovalType, string> = Object.fromEntries(
+  APPROVAL_TYPES.map((t) => [t.key, t.short]),
+) as Record<ApprovalType, string>;

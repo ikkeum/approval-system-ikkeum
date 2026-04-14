@@ -1,13 +1,17 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { inviteMemberAction, type InviteState } from "./actions";
+import { createTeamAction, type TeamState } from "./actions";
 
-type Team = { id: string; name: string };
+type Candidate = { id: string; name: string; dept: string | null };
 
-export default function InviteForm({ teams }: { teams: Team[] }) {
-  const [state, formAction, pending] = useActionState<InviteState, FormData>(
-    inviteMemberAction,
+export default function CreateTeamCard({
+  candidates,
+}: {
+  candidates: Candidate[];
+}) {
+  const [state, formAction, pending] = useActionState<TeamState, FormData>(
+    createTeamAction,
     null,
   );
   const [open, setOpen] = useState(false);
@@ -23,14 +27,13 @@ export default function InviteForm({ teams }: { teams: Team[] }) {
         }}
       >
         <div>
-          <h2 style={{ fontSize: 14, fontWeight: 700 }}>멤버 초대</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 700 }}>새 팀</h2>
           <p style={{ fontSize: 12, color: "#6B7280", marginTop: 4 }}>
-            이메일로 초대하면 상대가 링크를 눌러 비밀번호를 설정하고 바로
-            시작할 수 있습니다.
+            팀을 만들고 팀장을 지정하세요. 팀장은 소속 팀원의 결재자가 됩니다.
           </p>
         </div>
         <button onClick={() => setOpen(true)} style={btnPrimary}>
-          + 초대
+          + 팀 만들기
         </button>
       </div>
     );
@@ -39,60 +42,27 @@ export default function InviteForm({ teams }: { teams: Team[] }) {
   return (
     <form action={formAction} style={{ padding: 20 }}>
       <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>
-        멤버 초대
+        새 팀
       </h2>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Field label="이메일">
-          <input
-            type="email"
-            name="email"
-            required
-            style={input}
-            placeholder="name@회사도메인.com"
-          />
+        <Field label="팀명">
+          <input name="name" required maxLength={40} style={input} placeholder="예: 개발팀" />
         </Field>
-        <Field label="이름">
-          <input
-            type="text"
-            name="name"
-            required
-            maxLength={40}
-            style={input}
-            placeholder="홍길동"
-          />
-        </Field>
-        <Field label="부서">
-          <input type="text" name="dept" maxLength={40} style={input} />
-        </Field>
-        <Field label="역할">
-          <select name="role" defaultValue="member" style={input}>
-            <option value="member">멤버</option>
-            <option value="manager">매니저</option>
-            <option value="admin">관리자</option>
-          </select>
-        </Field>
-        <Field label="소속 팀 (선택)">
-          <select name="team_id" defaultValue="" style={input}>
-            <option value="">무소속</option>
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
+        <Field label="팀장 (선택)">
+          <select name="leader_id" defaultValue="" style={input}>
+            <option value="">나중에 지정</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} {c.dept ? `(${c.dept})` : ""}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="입사일 (선택)">
-          <input type="date" name="hire_date" style={input} />
-        </Field>
       </div>
 
-      {state?.ok === false && (
-        <div style={err}>{state.error}</div>
-      )}
-      {state?.ok === true && (
-        <div style={ok}>초대 메일을 {state.email} 로 보냈습니다.</div>
-      )}
+      {state?.ok === false && <div style={err}>{state.error}</div>}
+      {state?.ok === true && <div style={ok}>팀을 만들었습니다.</div>}
 
       <div
         style={{
@@ -111,7 +81,7 @@ export default function InviteForm({ teams }: { teams: Team[] }) {
           닫기
         </button>
         <button type="submit" disabled={pending} style={btnPrimary}>
-          {pending ? "초대 중..." : "초대 메일 보내기"}
+          {pending ? "생성 중..." : "생성"}
         </button>
       </div>
     </form>

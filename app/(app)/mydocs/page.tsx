@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import StatusBadge, { TypeTag } from "@/components/StatusBadge";
+import NewApprovalMenu from "@/components/NewApprovalMenu";
 import { formatDate } from "@/lib/format";
 import type { ApprovalRow, ApprovalStatus } from "@/lib/approvals";
 
@@ -43,14 +44,7 @@ export default async function MyDocsPage({
         }}
       >
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>내 문서</h1>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/approvals/new?type=leave" style={btnOutline}>
-            + 연차 신청
-          </Link>
-          <Link href="/approvals/new?type=expense" style={btnPrimary}>
-            + 품의 작성
-          </Link>
-        </div>
+        <NewApprovalMenu />
       </header>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -142,22 +136,4 @@ const empty: React.CSSProperties = {
   textAlign: "center",
   color: "#9CA3AF",
   fontSize: 13,
-};
-const btnPrimary: React.CSSProperties = {
-  padding: "9px 18px",
-  borderRadius: 8,
-  background: "#185FA5",
-  color: "#fff",
-  fontWeight: 700,
-  fontSize: 13,
-  boxShadow: "0 2px 8px rgba(24,95,165,0.2)",
-};
-const btnOutline: React.CSSProperties = {
-  padding: "9px 18px",
-  borderRadius: 8,
-  background: "#fff",
-  color: "#1E1E1C",
-  fontWeight: 600,
-  fontSize: 13,
-  border: "1.5px solid #E5E7EB",
 };

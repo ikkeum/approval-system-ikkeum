@@ -63,7 +63,7 @@ export default async function ApprovalDetailPage({
   );
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id,name,dept,role,stamp_svg")
+    .select("id,name,dept,role,is_executive,stamp_svg")
     .in("id", involvedIds);
   const pmap = new Map((profiles ?? []).map((p) => [p.id, p]));
   const author = pmap.get(row.author_id);
@@ -73,6 +73,9 @@ export default async function ApprovalDetailPage({
   const secondApprover = row.second_approver_id
     ? pmap.get(row.second_approver_id)
     : null;
+
+  // 2단계 라벨: 대표면 "대표", 아니면 "팀장"
+  const secondLabel = secondApprover?.is_executive ? "대표" : "팀장";
 
   const { data: actions } = await supabase
     .from("approval_actions")
@@ -146,7 +149,7 @@ export default async function ApprovalDetailPage({
             comment={row.first_comment}
           />
           <ApprovalStep
-            label="대표"
+            label={secondLabel}
             step={2}
             currentStep={row.step}
             status={row.status}
@@ -159,10 +162,23 @@ export default async function ApprovalDetailPage({
 
       <section style={card}>
         <h2 style={h2}>상세</h2>
-        {row.type === "leave" ? (
+        {row.type === "leave" && (
           <LeaveDetails payload={row.payload as LeaveP} />
-        ) : (
+        )}
+        {row.type === "expense" && (
           <ExpenseDetails payload={row.payload as ExpenseP} />
+        )}
+        {row.type === "leave_of_absence" && (
+          <LeaveOfAbsenceDetails payload={row.payload as LeaveOfAbsenceP} />
+        )}
+        {row.type === "reinstatement" && (
+          <ReinstatementDetails payload={row.payload as ReinstatementP} />
+        )}
+        {row.type === "employment_cert" && (
+          <EmploymentCertDetails payload={row.payload as EmploymentCertP} />
+        )}
+        {row.type === "career_cert" && (
+          <CareerCertDetails payload={row.payload as CareerCertP} />
         )}
       </section>
 
@@ -205,13 +221,26 @@ export default async function ApprovalDetailPage({
 
 type LeaveP = { leaveType: string; start: string; end: string; days: number; reason: string };
 type ExpenseP = { amount: number; purpose: string; content: string };
-type Person = {
-  id: string;
-  name: string;
-  dept: string | null;
-  role: string;
-  stamp_svg: string | null;
-} | null
+type LeaveOfAbsenceP = { start: string; end: string; reason: string };
+type ReinstatementP = { return_date: string; reason: string };
+type EmploymentCertP = { purpose: string; destination?: string; copies: number };
+type CareerCertP = {
+  purpose: string;
+  destination?: string;
+  period_start?: string;
+  period_end?: string;
+  copies: number;
+};
+type Person =
+  | {
+      id: string;
+      name: string;
+      dept: string | null;
+      role: string;
+      is_executive?: boolean;
+      stamp_svg: string | null;
+    }
+  | null
   | undefined;
 
 function ApprovalStep({
@@ -374,6 +403,62 @@ function ExpenseDetails({ payload }: { payload: ExpenseP }) {
       <dd>{payload.purpose}</dd>
       <dt>내용</dt>
       <dd style={{ whiteSpace: "pre-wrap" }}>{payload.content}</dd>
+    </dl>
+  );
+}
+
+function LeaveOfAbsenceDetails({ payload }: { payload: LeaveOfAbsenceP }) {
+  return (
+    <dl style={dl}>
+      <dt>휴직 기간</dt>
+      <dd>
+        {payload.start} ~ {payload.end}
+      </dd>
+      <dt>사유</dt>
+      <dd style={{ whiteSpace: "pre-wrap" }}>{payload.reason}</dd>
+    </dl>
+  );
+}
+
+function ReinstatementDetails({ payload }: { payload: ReinstatementP }) {
+  return (
+    <dl style={dl}>
+      <dt>복귀 예정일</dt>
+      <dd style={{ fontWeight: 700 }}>{payload.return_date}</dd>
+      <dt>사유</dt>
+      <dd style={{ whiteSpace: "pre-wrap" }}>{payload.reason}</dd>
+    </dl>
+  );
+}
+
+function EmploymentCertDetails({ payload }: { payload: EmploymentCertP }) {
+  return (
+    <dl style={dl}>
+      <dt>용도</dt>
+      <dd>{payload.purpose}</dd>
+      <dt>제출처</dt>
+      <dd>{payload.destination || "-"}</dd>
+      <dt>발급 부수</dt>
+      <dd>{payload.copies}부</dd>
+    </dl>
+  );
+}
+
+function CareerCertDetails({ payload }: { payload: CareerCertP }) {
+  return (
+    <dl style={dl}>
+      <dt>용도</dt>
+      <dd>{payload.purpose}</dd>
+      <dt>제출처</dt>
+      <dd>{payload.destination || "-"}</dd>
+      <dt>증명 기간</dt>
+      <dd>
+        {payload.period_start && payload.period_end
+          ? `${payload.period_start} ~ ${payload.period_end}`
+          : "재직 전 기간"}
+      </dd>
+      <dt>발급 부수</dt>
+      <dd>{payload.copies}부</dd>
     </dl>
   );
 }

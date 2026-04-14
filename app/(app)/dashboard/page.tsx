@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import StatusBadge, { TypeTag } from "@/components/StatusBadge";
+import NewApprovalMenu from "@/components/NewApprovalMenu";
 import { formatDateTime } from "@/lib/format";
 import type { ApprovalRow } from "@/lib/approvals";
 
@@ -42,9 +43,7 @@ export default async function DashboardPage() {
         }}
       >
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>대시보드</h1>
-        <Link href="/approvals/new?type=leave" style={btnPrimary}>
-          + 새 결재
-        </Link>
+        <NewApprovalMenu />
       </header>
 
       <div
@@ -148,12 +147,3 @@ const row: React.CSSProperties = {
   borderTop: "1px solid #F3F4F6",
 };
 
-const btnPrimary: React.CSSProperties = {
-  padding: "10px 20px",
-  borderRadius: 8,
-  background: "#185FA5",
-  color: "#fff",
-  fontWeight: 700,
-  fontSize: 13,
-  boxShadow: "0 2px 8px rgba(24,95,165,0.2)",
-};

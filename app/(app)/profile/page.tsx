@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import StampPanel from "./StampPanel";
+import RoleBadge, { ExecutiveBadge, type Role } from "@/components/RoleBadge";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -8,7 +9,7 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("name, email, dept, role, hire_date, stamp_svg")
+    .select("name, email, dept, role, hire_date, is_executive, stamp_svg")
     .eq("id", user!.id)
     .maybeSingle();
 
@@ -32,7 +33,10 @@ export default async function ProfilePage() {
           <dt>부서</dt>
           <dd>{profile?.dept ?? "-"}</dd>
           <dt>역할</dt>
-          <dd>{profile?.role}</dd>
+          <dd style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {profile?.role && <RoleBadge role={profile.role as Role} />}
+            {profile?.is_executive && <ExecutiveBadge />}
+          </dd>
           <dt>입사일</dt>
           <dd>
             {profile?.hire_date ?? "-"}

@@ -1,7 +1,9 @@
 import {
   type ApprovalStatus,
+  type ApprovalType,
   STATUS_KO,
   STATUS_STYLE,
+  TYPE_KO,
 } from "@/lib/approvals";
 
 export default function StatusBadge({ status }: { status: ApprovalStatus }) {
@@ -24,8 +26,17 @@ export default function StatusBadge({ status }: { status: ApprovalStatus }) {
   );
 }
 
-export function TypeTag({ type }: { type: "leave" | "expense" }) {
-  const leave = type === "leave";
+const TYPE_STYLE: Record<ApprovalType, { bg: string; fg: string }> = {
+  leave: { bg: "#EEF2FF", fg: "#4338CA" },
+  expense: { bg: "#FDF2F8", fg: "#BE185D" },
+  leave_of_absence: { bg: "#FEF3C7", fg: "#92400E" },
+  reinstatement: { bg: "#D1FAE5", fg: "#065F46" },
+  employment_cert: { bg: "#E0E7FF", fg: "#3730A3" },
+  career_cert: { bg: "#F3E8FF", fg: "#6B21A8" },
+};
+
+export function TypeTag({ type }: { type: ApprovalType }) {
+  const s = TYPE_STYLE[type] ?? { bg: "#F3F4F6", fg: "#4B5563" };
   return (
     <span
       style={{
@@ -34,11 +45,12 @@ export function TypeTag({ type }: { type: "leave" | "expense" }) {
         borderRadius: 5,
         fontSize: 11,
         fontWeight: 700,
-        background: leave ? "#EEF2FF" : "#FDF2F8",
-        color: leave ? "#4338CA" : "#BE185D",
+        background: s.bg,
+        color: s.fg,
+        whiteSpace: "nowrap",
       }}
     >
-      {leave ? "연차" : "품의"}
+      {TYPE_KO[type]}
     </span>
   );
 }

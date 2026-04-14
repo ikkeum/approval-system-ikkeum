@@ -5,19 +5,19 @@ import MemberRow from "./MemberRow";
 export default async function MembersPage() {
   const supabase = await createClient();
 
-  const { data: members } = await supabase
-    .from("profiles")
-    .select(
-      "id,email,name,dept,role,manager_id,hire_date,is_executive,created_at",
-    )
-    .order("created_at", { ascending: true });
+  const [{ data: members }, { data: teams }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(
+        "id,email,name,dept,role,manager_id,hire_date,is_executive,team_id,created_at",
+      )
+      .order("created_at", { ascending: true }),
+    supabase.from("teams").select("id,name").order("name"),
+  ]);
 
   const list = members ?? [];
-  const managerCandidates = list.map((m) => ({
-    id: m.id,
-    name: m.name,
-    dept: m.dept,
-  }));
+  const teamList = teams ?? [];
+  const teamById = new Map(teamList.map((t) => [t.id, t]));
 
   return (
     <main
@@ -39,15 +39,15 @@ export default async function MembersPage() {
       </header>
 
       <section style={{ ...card, marginBottom: 24 }}>
-        <InviteForm managerCandidates={managerCandidates} />
+        <InviteForm teams={teamList} />
       </section>
 
       <section style={card}>
         <header style={tableHeader}>
           <span style={{ flex: 1 }}>이름 / 이메일</span>
           <span style={{ width: 100 }}>부서</span>
+          <span style={{ width: 120 }}>팀</span>
           <span style={{ width: 90 }}>역할</span>
-          <span style={{ width: 140 }}>매니저</span>
           <span style={{ width: 110 }}>입사일</span>
           <span style={{ width: 140 }}></span>
         </header>
@@ -59,9 +59,8 @@ export default async function MembersPage() {
             <MemberRow
               key={m.id}
               member={m}
-              managerCandidates={managerCandidates.filter(
-                (c) => c.id !== m.id,
-              )}
+              teams={teamList}
+              teamName={m.team_id ? teamById.get(m.team_id)?.name ?? null : null}
               last={i === list.length - 1}
             />
           ))

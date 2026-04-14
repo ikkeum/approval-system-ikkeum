@@ -35,6 +35,7 @@ const InviteInput = z.object({
   role: RoleEnum.default("member"),
   manager_id: z.string().uuid().optional().or(z.literal("")),
   hire_date: DateStr,
+  team_id: z.string().uuid().optional().or(z.literal("")),
 });
 
 export type InviteState =
@@ -56,6 +57,7 @@ export async function inviteMemberAction(
     role: formData.get("role") || "member",
     manager_id: formData.get("manager_id") || "",
     hire_date: formData.get("hire_date") || "",
+    team_id: formData.get("team_id") || "",
   });
   if (!parsed.success) {
     return { ok: false, error: "입력값을 확인해주세요." };
@@ -64,6 +66,7 @@ export async function inviteMemberAction(
   const { email, name, dept, role } = parsed.data;
   const manager_id = parsed.data.manager_id || null;
   const hire_date = parsed.data.hire_date || null;
+  const team_id = parsed.data.team_id || null;
 
   const admin = createAdminClient();
   const siteUrl =
@@ -76,6 +79,7 @@ export async function inviteMemberAction(
       role,
       manager_id,
       hire_date,
+      team_id,
     },
     redirectTo: `${siteUrl}/auth/confirm?next=/dashboard`,
   });
@@ -101,6 +105,7 @@ const UpdateInput = z.object({
   role: RoleEnum,
   manager_id: z.string().uuid().optional().or(z.literal("")),
   hire_date: DateStr,
+  team_id: z.string().uuid().optional().or(z.literal("")),
   is_executive: z
     .union([z.literal("on"), z.literal("true"), z.literal("")])
     .optional()
@@ -119,6 +124,7 @@ export async function updateMemberAction(
     role: formData.get("role"),
     manager_id: formData.get("manager_id") || "",
     hire_date: formData.get("hire_date") || "",
+    team_id: formData.get("team_id") || "",
     is_executive: formData.get("is_executive") || "",
   });
   if (!parsed.success) return { error: "입력값을 확인해주세요." };
@@ -141,6 +147,7 @@ export async function updateMemberAction(
       role: parsed.data.role,
       manager_id: parsed.data.manager_id || null,
       hire_date: parsed.data.hire_date || null,
+      team_id: parsed.data.team_id || null,
       is_executive: parsed.data.is_executive,
     })
     .eq("id", parsed.data.id);
