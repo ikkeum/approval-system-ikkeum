@@ -4,6 +4,20 @@
   padding: 0;
 }
 
+/* sign-generator SVG가 intrinsic width/height 를 가져서 컨테이너를 넘치는 문제 해결.
+   컨테이너 크기에 100% fit. */
+.stamp-frame {
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stamp-frame > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 html,
 body {
   height: 100%;

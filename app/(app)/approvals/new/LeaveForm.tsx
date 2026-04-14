@@ -3,15 +3,7 @@
 import { useActionState, useState } from "react";
 import { createLeaveAction, type NewState } from "./actions";
 
-type Approver = { id: string; name: string; dept: string | null };
-
-export default function LeaveForm({
-  approvers,
-  defaultApproverId,
-}: {
-  approvers: Approver[];
-  defaultApproverId: string | null;
-}) {
+export default function LeaveForm() {
   const [state, formAction, pending] = useActionState<NewState, FormData>(
     createLeaveAction,
     null,
@@ -22,17 +14,6 @@ export default function LeaveForm({
 
   return (
     <form action={formAction} style={card}>
-      <Field label="결재자">
-        <select name="approver_id" defaultValue={defaultApproverId ?? ""} style={input} required>
-          <option value="">선택</option>
-          {approvers.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} {a.dept ? `(${a.dept})` : ""}
-            </option>
-          ))}
-        </select>
-      </Field>
-
       <Field label="유형">
         <select
           name="leaveType"

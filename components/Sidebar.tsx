@@ -38,13 +38,28 @@ export default function Sidebar({
     >
       <div
         style={{
-          padding: "24px 20px",
+          padding: "20px 20px",
           fontSize: 16,
           fontWeight: 800,
           borderBottom: "1px solid rgba(255,255,255,0.08)",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
         }}
       >
-        사내 전자결재
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/symbol.png"
+          alt="Ikkeum"
+          style={{
+            height: 28,
+            width: 28,
+            borderRadius: 6,
+            background: "#fff",
+            padding: 2,
+          }}
+        />
+        <span>사내 전자결재</span>
       </div>
 
       <nav style={{ flex: 1, paddingTop: 8 }}>

@@ -11,25 +11,18 @@ export default async function NewApprovalPage({
   searchParams: Promise<SP>;
 }) {
   const { type = "leave" } = await searchParams;
-  if (type !== "leave" && type !== "expense") redirect("/approvals/new?type=leave");
+  if (type !== "leave" && type !== "expense")
+    redirect("/approvals/new?type=leave");
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  // 결재자 후보: 본인 제외 전체. (소규모 팀에선 이게 가장 유연)
-  const { data: approvers } = await supabase
+  // 대표(2단계) 이름만 안내용으로 조회
+  const { data: exec } = await supabase
     .from("profiles")
-    .select("id,name,dept,role")
-    .neq("id", user!.id)
-    .order("name");
-
-  // 기본 선택: 본인의 manager_id
-  const { data: me } = await supabase
-    .from("profiles")
-    .select("manager_id")
-    .eq("id", user!.id)
+    .select("name,dept")
+    .eq("is_executive", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   return (
@@ -38,14 +31,11 @@ export default async function NewApprovalPage({
         {type === "leave" ? "연차 신청" : "품의 작성"}
       </h1>
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 24 }}>
-        임시저장은 언제든 다시 열어 수정할 수 있습니다. 제출하면 결재자에게
-        대기 상태로 전달됩니다.
+        결재 라인: <strong>본인(기안)</strong> → <strong>대표</strong>
+        {exec ? ` (${exec.name}${exec.dept ? ` · ${exec.dept}` : ""})` : ""}
+        . 제출하면 대표에게 대기 상태로 전달됩니다.
       </p>
-      {type === "leave" ? (
-        <LeaveForm approvers={approvers ?? []} defaultApproverId={me?.manager_id ?? null} />
-      ) : (
-        <ExpenseForm approvers={approvers ?? []} defaultApproverId={me?.manager_id ?? null} />
-      )}
+      {type === "leave" ? <LeaveForm /> : <ExpenseForm />}
     </main>
   );
 }

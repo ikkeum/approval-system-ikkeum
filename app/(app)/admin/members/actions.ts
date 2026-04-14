@@ -101,6 +101,10 @@ const UpdateInput = z.object({
   role: RoleEnum,
   manager_id: z.string().uuid().optional().or(z.literal("")),
   hire_date: DateStr,
+  is_executive: z
+    .union([z.literal("on"), z.literal("true"), z.literal("")])
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
 });
 
 export async function updateMemberAction(
@@ -115,10 +119,21 @@ export async function updateMemberAction(
     role: formData.get("role"),
     manager_id: formData.get("manager_id") || "",
     hire_date: formData.get("hire_date") || "",
+    is_executive: formData.get("is_executive") || "",
   });
   if (!parsed.success) return { error: "입력값을 확인해주세요." };
 
   const admin = createAdminClient();
+
+  // 대표는 1명만. 켜는 쪽이면 먼저 다른 사람 off 처리 (앱 레벨 제약).
+  if (parsed.data.is_executive) {
+    await admin
+      .from("profiles")
+      .update({ is_executive: false })
+      .neq("id", parsed.data.id)
+      .eq("is_executive", true);
+  }
+
   const { error } = await admin
     .from("profiles")
     .update({
@@ -126,6 +141,7 @@ export async function updateMemberAction(
       role: parsed.data.role,
       manager_id: parsed.data.manager_id || null,
       hire_date: parsed.data.hire_date || null,
+      is_executive: parsed.data.is_executive,
     })
     .eq("id", parsed.data.id);
 

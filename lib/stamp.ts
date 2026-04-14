@@ -34,13 +34,19 @@ export async function generateStamp(name: string): Promise<string> {
   const stampText = trimmed.endsWith("인") ? trimmed : `${trimmed}인`;
 
   const fonts = resolveFonts();
+  const BOX = 160;
 
   const svgs: string[] = await createStamp(stampText, fonts, {
-    boxOption: { width: 160, height: 160 },
+    boxOption: { width: BOX, height: BOX },
     borderOption: { stroke: "#c62828", strokeWidth: 3 },
     attributes: { fill: "#c62828" },
     fontSize: 38,
   });
 
-  return svgs[0] ?? svgs.join("\n");
+  const raw = svgs[0] ?? svgs.join("\n");
+
+  // sign-generator 는 viewBox 를 넣지 않음 → CSS 로 축소 시 clipping.
+  // 저장 전에 viewBox 를 주입해 scalable 한 SVG 로 변환.
+  if (/viewBox\s*=/.test(raw)) return raw;
+  return raw.replace(/<svg([^>]*)>/, `<svg$1 viewBox="0 0 ${BOX} ${BOX}">`);
 }

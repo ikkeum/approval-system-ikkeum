@@ -3,6 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+function normalizeStampSvg(svg: string | null | undefined): string {
+  if (!svg) return "";
+  if (/viewBox\s*=/.test(svg)) return svg;
+  const m = svg.match(/<svg([^>]*)>/);
+  if (!m) return svg;
+  const attrs = m[1];
+  const w = attrs.match(/\bwidth\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
+  const h = attrs.match(/\bheight\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
+  if (!w || !h) return svg;
+  return svg.replace(/<svg([^>]*)>/, `<svg$1 viewBox="0 0 ${w} ${h}">`);
+}
+
 export default function StampPanel({
   name,
   initialSvg,
@@ -59,17 +71,15 @@ export default function StampPanel({
           }}
         >
           <div
+            className="stamp-frame"
             style={{
               width: 180,
               height: 180,
               border: "1px dashed #E5E7EB",
               borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
               background: "#FAFBFC",
             }}
-            dangerouslySetInnerHTML={{ __html: svg }}
+            dangerouslySetInnerHTML={{ __html: normalizeStampSvg(svg) }}
           />
           <button onClick={() => generate(true)} disabled={loading} style={btn}>
             {loading ? "재생성 중..." : "다시 생성"}

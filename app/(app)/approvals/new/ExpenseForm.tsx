@@ -3,17 +3,9 @@
 import { useActionState } from "react";
 import { createExpenseAction, type NewState } from "./actions";
 
-type Approver = { id: string; name: string; dept: string | null };
-
 const PURPOSES = ["장비구매", "외주비", "교육비", "출장비", "복리후생", "인프라/서버", "기타"];
 
-export default function ExpenseForm({
-  approvers,
-  defaultApproverId,
-}: {
-  approvers: Approver[];
-  defaultApproverId: string | null;
-}) {
+export default function ExpenseForm() {
   const [state, formAction, pending] = useActionState<NewState, FormData>(
     createExpenseAction,
     null,
@@ -21,17 +13,6 @@ export default function ExpenseForm({
 
   return (
     <form action={formAction} style={card}>
-      <Field label="결재자">
-        <select name="approver_id" defaultValue={defaultApproverId ?? ""} style={input} required>
-          <option value="">선택</option>
-          {approvers.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} {a.dept ? `(${a.dept})` : ""}
-            </option>
-          ))}
-        </select>
-      </Field>
-
       <Field label="제목">
         <input name="title" required maxLength={80} style={input} placeholder="예: AWS 서버 증설 비용" />
       </Field>

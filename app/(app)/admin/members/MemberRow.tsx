@@ -13,6 +13,7 @@ type Member = {
   role: "member" | "manager" | "admin";
   manager_id: string | null;
   hire_date: string | null;
+  is_executive: boolean;
 };
 
 const ROLE_LABEL: Record<Member["role"], string> = {
@@ -51,7 +52,24 @@ export default function MemberRow({
     return (
       <div style={rowStyle}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600 }}>{member.name}</div>
+          <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}>
+            {member.name}
+            {member.is_executive && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  background: "#FEF3F2",
+                  color: "#B42318",
+                  border: "1px solid #FDA29B",
+                }}
+              >
+                대표
+              </span>
+            )}
+          </div>
           <div style={{ fontSize: 12, color: "#6B7280" }}>{member.email}</div>
         </div>
         <div style={{ width: 100, color: "#4B5563" }}>
@@ -130,6 +148,25 @@ export default function MemberRow({
         defaultValue={member.hire_date ?? ""}
         style={{ ...input, width: 110 }}
       />
+      <label
+        style={{
+          display: "flex",
+          gap: 4,
+          alignItems: "center",
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#4B5563",
+          width: "100%",
+          marginTop: 4,
+        }}
+      >
+        <input
+          type="checkbox"
+          name="is_executive"
+          defaultChecked={member.is_executive}
+        />
+        <span>대표 결재자로 지정 (전체 중 1명만)</span>
+      </label>
       <div
         style={{
           display: "flex",

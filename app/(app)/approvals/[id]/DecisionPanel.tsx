@@ -19,17 +19,12 @@ type Mode =
 export default function DecisionPanel({
   id,
   mode,
-  approvers,
-  currentApproverId,
 }: {
   id: number;
   mode: Mode;
-  approvers: { id: string; name: string; dept: string | null }[];
-  currentApproverId: string | null;
 }) {
   const router = useRouter();
   const [comment, setComment] = useState("");
-  const [approverId, setApproverId] = useState(currentApproverId ?? "");
   const [err, setErr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -80,22 +75,17 @@ export default function DecisionPanel({
       {mode.kind === "author_draft" && (
         <>
           <h2 style={h2}>제출 / 삭제</h2>
-          <label style={{ fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
-            결재자 선택
-          </label>
-          <select
-            value={approverId}
-            onChange={(e) => setApproverId(e.target.value)}
-            style={input}
+          <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 12 }}>
+            제출하면 본인(기안) → 대표 순으로 결재가 진행됩니다.
+          </p>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              justifyContent: "flex-end",
+              marginTop: 12,
+            }}
           >
-            <option value="">선택</option>
-            {approvers.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} {a.dept ? `(${a.dept})` : ""}
-              </option>
-            ))}
-          </select>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
             <button
               disabled={pending}
               onClick={wrap(() => deleteDraftAction(id))}
@@ -104,8 +94,8 @@ export default function DecisionPanel({
               삭제
             </button>
             <button
-              disabled={pending || !approverId}
-              onClick={wrap(() => submitAction(id, approverId))}
+              disabled={pending}
+              onClick={wrap(() => submitAction(id))}
               style={btnPrimary}
             >
               제출

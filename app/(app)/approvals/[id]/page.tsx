@@ -14,6 +14,22 @@ const ACTION_KO: Record<string, string> = {
   comment: "코멘트",
 };
 
+/**
+ * sign-generator 는 viewBox 없이 width/height 만 세팅하므로,
+ * CSS로 SVG 를 축소하면 내용이 clipping 된다. viewBox 를 주입해 scalable 하게.
+ */
+function normalizeStampSvg(svg: string | null | undefined): string {
+  if (!svg) return "";
+  if (/viewBox\s*=/.test(svg)) return svg;
+  const m = svg.match(/<svg([^>]*)>/);
+  if (!m) return svg;
+  const attrs = m[1];
+  const w = attrs.match(/\bwidth\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
+  const h = attrs.match(/\bheight\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
+  if (!w || !h) return svg;
+  return svg.replace(/<svg([^>]*)>/, `<svg$1 viewBox="0 0 ${w} ${h}">`);
+}
+
 export default async function ApprovalDetailPage({
   params,
 }: {
@@ -35,16 +51,28 @@ export default async function ApprovalDetailPage({
     .maybeSingle<ApprovalRow>();
   if (!row) notFound();
 
+  const involvedIds = Array.from(
+    new Set(
+      [
+        row.author_id,
+        row.approver_id,
+        row.first_approver_id,
+        row.second_approver_id,
+      ].filter(Boolean) as string[],
+    ),
+  );
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id,name,dept,role,stamp_svg")
-    .in(
-      "id",
-      [row.author_id, row.approver_id].filter(Boolean) as string[],
-    );
+    .in("id", involvedIds);
   const pmap = new Map((profiles ?? []).map((p) => [p.id, p]));
   const author = pmap.get(row.author_id);
-  const approver = row.approver_id ? pmap.get(row.approver_id) : null;
+  const firstApprover = row.first_approver_id
+    ? pmap.get(row.first_approver_id)
+    : null;
+  const secondApprover = row.second_approver_id
+    ? pmap.get(row.second_approver_id)
+    : null;
 
   const { data: actions } = await supabase
     .from("approval_actions")
@@ -58,17 +86,6 @@ export default async function ApprovalDetailPage({
     .select("id,name")
     .in("id", actorIds.length ? actorIds : ["00000000-0000-0000-0000-000000000000"]);
   const actorMap = new Map((actors ?? []).map((a) => [a.id, a.name]));
-
-  // 결재자 후보 (작성자가 DRAFT에서 결재자 재지정 가능)
-  let approverCandidates: { id: string; name: string; dept: string | null }[] = [];
-  if (row.author_id === user!.id) {
-    const { data: list } = await supabase
-      .from("profiles")
-      .select("id,name,dept")
-      .neq("id", user!.id)
-      .order("name");
-    approverCandidates = list ?? [];
-  }
 
   const isAuthor = row.author_id === user!.id;
   const isApprover = row.approver_id === user!.id;
@@ -105,14 +122,40 @@ export default async function ApprovalDetailPage({
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 24 }}>
         작성자 <strong>{author?.name ?? "-"}</strong>
         {author?.dept && ` · ${author.dept}`} · 신청일 {formatDate(row.created_at)}
-        {approver && (
-          <>
-            {" · "}
-            결재자 <strong>{approver.name}</strong>
-            {approver.dept && ` (${approver.dept})`}
-          </>
-        )}
       </p>
+
+      {/* 결재 라인 */}
+      <section style={card}>
+        <h2 style={h2}>결재 라인</h2>
+        <ol
+          style={{
+            listStyle: "none",
+            padding: 0,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+          }}
+        >
+          <ApprovalStep
+            label="담당 (기안)"
+            step={1}
+            currentStep={row.step}
+            status={row.status}
+            person={firstApprover}
+            decidedAt={row.first_decided_at}
+            comment={row.first_comment}
+          />
+          <ApprovalStep
+            label="대표"
+            step={2}
+            currentStep={row.step}
+            status={row.status}
+            person={secondApprover}
+            decidedAt={row.decided_at}
+            comment={row.decision_comment}
+          />
+        </ol>
+      </section>
 
       <section style={card}>
         <h2 style={h2}>상세</h2>
@@ -123,31 +166,6 @@ export default async function ApprovalDetailPage({
         )}
       </section>
 
-      {row.decision_comment && row.status !== "PENDING" && (
-        <section style={card}>
-          <h2 style={h2}>결재자 의견</h2>
-          <p style={{ fontSize: 14, whiteSpace: "pre-wrap", color: "#374151" }}>
-            {row.decision_comment}
-          </p>
-        </section>
-      )}
-
-      {/* 직인 */}
-      {row.status === "APPROVED" && approver?.stamp_svg && (
-        <section style={{ ...card, display: "flex", alignItems: "center", gap: 16 }}>
-          <div
-            style={{ width: 120, height: 120 }}
-            dangerouslySetInnerHTML={{ __html: approver.stamp_svg }}
-          />
-          <div style={{ fontSize: 13, color: "#6B7280" }}>
-            <div>
-              <strong style={{ color: "#1E1E1C" }}>{approver.name}</strong> 님이
-              승인했습니다.
-            </div>
-            <div>{formatDateTime(row.decided_at)}</div>
-          </div>
-        </section>
-      )}
 
       <section style={card}>
         <h2 style={h2}>히스토리</h2>
@@ -180,18 +198,157 @@ export default async function ApprovalDetailPage({
         </ol>
       </section>
 
-      <DecisionPanel
-        id={row.id}
-        mode={mode}
-        approvers={approverCandidates}
-        currentApproverId={row.approver_id}
-      />
+      <DecisionPanel id={row.id} mode={mode} />
     </main>
   );
 }
 
 type LeaveP = { leaveType: string; start: string; end: string; days: number; reason: string };
 type ExpenseP = { amount: number; purpose: string; content: string };
+type Person = {
+  id: string;
+  name: string;
+  dept: string | null;
+  role: string;
+  stamp_svg: string | null;
+} | null
+  | undefined;
+
+function ApprovalStep({
+  label,
+  step,
+  currentStep,
+  status,
+  person,
+  decidedAt,
+  comment,
+}: {
+  label: string;
+  step: 1 | 2;
+  currentStep: 1 | 2;
+  status: string;
+  person: Person;
+  decidedAt: string | null;
+  comment: string | null;
+}) {
+  let state: "pending" | "current" | "approved" | "rejected" | "skipped";
+  if (status === "APPROVED") state = "approved";
+  else if (status === "REJECTED") {
+    // 반려: 현재 단계가 반려됨. 1단계 반려면 2단계는 skipped.
+    state =
+      step === currentStep
+        ? "rejected"
+        : step < currentStep
+          ? "approved"
+          : "skipped";
+  } else if (status === "CANCELED") {
+    state = step < currentStep ? "approved" : "skipped";
+  } else if (status === "PENDING") {
+    state = step < currentStep ? "approved" : step === currentStep ? "current" : "pending";
+  } else {
+    state = "pending"; // DRAFT
+  }
+
+  const palette = {
+    pending: { bg: "#F9FAFB", fg: "#9CA3AF", bd: "#E5E7EB", label: "대기" },
+    current: { bg: "#FFF8F0", fg: "#D97706", bd: "#FBBF24", label: "진행 중" },
+    approved: { bg: "#F0FDF4", fg: "#16A34A", bd: "#4ADE80", label: "승인" },
+    rejected: { bg: "#FEF2F2", fg: "#DC2626", bd: "#FCA5A5", label: "반려" },
+    skipped: { bg: "#F3F4F6", fg: "#9CA3AF", bd: "#E5E7EB", label: "-" },
+  }[state];
+
+  const showStamp = state === "approved" && person?.stamp_svg;
+
+  return (
+    <li
+      style={{
+        border: `1.5px solid ${palette.bd}`,
+        background: palette.bg,
+        borderRadius: 10,
+        padding: "14px 16px",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8,
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
+          {step}단계 · {label}
+        </span>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: palette.fg,
+            background: "#fff",
+            border: `1px solid ${palette.bd}`,
+            padding: "2px 8px",
+            borderRadius: 6,
+          }}
+        >
+          {palette.label}
+        </span>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-start",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>
+            {person?.name ?? "-"}
+          </div>
+          {person?.dept && (
+            <div style={{ fontSize: 12, color: "#6B7280" }}>{person.dept}</div>
+          )}
+          {decidedAt && (
+            <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
+              {formatDateTime(decidedAt)}
+            </div>
+          )}
+        </div>
+        {showStamp && (
+          <div
+            className="stamp-frame"
+            style={{
+              width: 80,
+              height: 80,
+              flexShrink: 0,
+            }}
+            aria-label={`${person.name} 직인`}
+            dangerouslySetInnerHTML={{
+              __html: normalizeStampSvg(person.stamp_svg),
+            }}
+          />
+        )}
+      </div>
+      {comment && (state === "approved" || state === "rejected") && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: "6px 8px",
+            fontSize: 12,
+            color: "#374151",
+            background: "#fff",
+            borderRadius: 6,
+            border: "1px solid rgba(0,0,0,0.04)",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {comment}
+        </div>
+      )}
+    </li>
+  );
+}
+
 
 function LeaveDetails({ payload }: { payload: LeaveP }) {
   return (

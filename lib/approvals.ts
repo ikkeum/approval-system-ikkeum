@@ -13,6 +13,11 @@ export type ApprovalRow = {
   title: string;
   author_id: string;
   approver_id: string | null;
+  first_approver_id: string | null;
+  second_approver_id: string | null;
+  step: 1 | 2;
+  first_decided_at: string | null;
+  first_comment: string | null;
   status: ApprovalStatus;
   payload: Record<string, unknown>;
   attachments: unknown[];

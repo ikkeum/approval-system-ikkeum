@@ -7,7 +7,9 @@ export default async function MembersPage() {
 
   const { data: members } = await supabase
     .from("profiles")
-    .select("id,email,name,dept,role,manager_id,hire_date,created_at")
+    .select(
+      "id,email,name,dept,role,manager_id,hire_date,is_executive,created_at",
+    )
     .order("created_at", { ascending: true });
 
   const list = members ?? [];
