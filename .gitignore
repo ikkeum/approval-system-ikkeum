@@ -9,5 +9,5 @@ next-env.d.ts
 tsconfig.tsbuildinfo
 
 # 폰트 파일은 라이선스 문제로 커밋하지 않음. fonts/README.md 참고하여 각자 다운로드.
-fonts/*.ttf
+
 fonts/*.otf
