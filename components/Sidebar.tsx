@@ -2,15 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Inbox,
+  FileText,
+  UserRound,
+  Settings,
+  LogOut,
+  type LucideIcon,
+} from "lucide-react";
 
-const BASE_ITEMS = [
-  { href: "/dashboard", icon: "▦", label: "대시보드" },
-  { href: "/approvals", icon: "✓", label: "결재함" },
-  { href: "/mydocs", icon: "◎", label: "내 문서" },
-  { href: "/profile", icon: "◉", label: "프로필" },
+type NavItem = { href: string; icon: LucideIcon; label: string };
+
+const BASE_ITEMS: NavItem[] = [
+  { href: "/dashboard", icon: LayoutDashboard, label: "대시보드" },
+  { href: "/approvals", icon: Inbox, label: "결재함" },
+  { href: "/mydocs", icon: FileText, label: "내 문서" },
+  { href: "/profile", icon: UserRound, label: "프로필" },
 ];
 
-const ADMIN_ITEM = { href: "/admin/members", icon: "⚙", label: "조직 관리" };
+const ADMIN_ITEM: NavItem = {
+  href: "/admin/members",
+  icon: Settings,
+  label: "조직 관리",
+};
 
 export default function Sidebar({
   userName,
@@ -66,6 +81,7 @@ export default function Sidebar({
         {ITEMS.map((it) => {
           const active =
             pathname === it.href || pathname.startsWith(it.href + "/");
+          const Icon = it.icon;
           return (
             <Link
               key={it.href}
@@ -84,7 +100,7 @@ export default function Sidebar({
                   : "3px solid transparent",
               }}
             >
-              <span style={{ fontSize: 16 }}>{it.icon}</span>
+              <Icon size={16} strokeWidth={2} />
               <span>{it.label}</span>
             </Link>
           );
@@ -113,8 +129,12 @@ export default function Sidebar({
               fontSize: 12,
               cursor: "pointer",
               padding: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
             }}
           >
+            <LogOut size={12} />
             로그아웃
           </button>
         </form>

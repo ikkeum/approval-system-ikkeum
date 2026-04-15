@@ -18,6 +18,32 @@
   display: block;
 }
 
+/* 모바일·태블릿 접근 차단 오버레이.
+   반응형 지원 전 임시 조치. 960px 미만에서만 표시. */
+.mobile-block {
+  display: none;
+}
+@media (max-width: 960px) {
+  .mobile-block {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #1e1e1c;
+    color: #fff;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+    gap: 16px;
+  }
+  /* 뒤에 깔리는 앱 UI 스크롤 방지 */
+  body:has(.mobile-block) {
+    overflow: hidden;
+  }
+}
+
 html,
 body {
   height: 100%;

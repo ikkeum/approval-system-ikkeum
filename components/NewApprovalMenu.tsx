@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Plus, ChevronDown } from "lucide-react";
 import { APPROVAL_TYPES } from "@/lib/approvals";
 
 export default function NewApprovalMenu({
@@ -50,9 +51,16 @@ export default function NewApprovalMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        style={btnStyle}
+        style={{
+          ...btnStyle,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+        }}
       >
-        + 기안 작성
+        <Plus size={14} strokeWidth={2.5} />
+        기안 작성
+        <ChevronDown size={14} strokeWidth={2} style={{ marginLeft: 2 }} />
       </button>
       {open && (
         <div

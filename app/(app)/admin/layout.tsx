@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Users, Network } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({
@@ -32,10 +33,28 @@ export default async function AdminLayout({
         }}
       >
         <strong style={{ color: "#1E1E1C" }}>조직 관리</strong>
-        <Link href="/admin/members" style={{ color: "#6B7280" }}>
+        <Link
+          href="/admin/members"
+          style={{
+            color: "#6B7280",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <Users size={14} />
           멤버
         </Link>
-        <Link href="/admin/teams" style={{ color: "#6B7280" }}>
+        <Link
+          href="/admin/teams"
+          style={{
+            color: "#6B7280",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <Network size={14} />
           팀
         </Link>
       </nav>

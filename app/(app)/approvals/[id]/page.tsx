@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import StatusBadge, { TypeTag } from "@/components/StatusBadge";
 import { formatDate, formatDateTime, formatKRW } from "@/lib/format";
@@ -104,8 +105,17 @@ export default async function ApprovalDetailPage({
   return (
     <main style={{ padding: "32px 40px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ fontSize: 13, marginBottom: 16 }}>
-        <Link href={isAuthor ? "/mydocs" : "/approvals"} style={{ color: "#185FA5" }}>
-          ← 목록으로
+        <Link
+          href={isAuthor ? "/mydocs" : "/approvals"}
+          style={{
+            color: "#185FA5",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <ArrowLeft size={14} />
+          목록으로
         </Link>
       </div>
 
