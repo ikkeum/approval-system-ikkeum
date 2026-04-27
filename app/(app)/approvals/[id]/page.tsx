@@ -15,6 +15,30 @@ const ACTION_KO: Record<string, string> = {
   comment: "코멘트",
 };
 
+function Linkify({ text }: { text: string | null | undefined }) {
+  if (!text) return null;
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <>
+      {parts.map((p, i) =>
+        /^https?:\/\//.test(p) ? (
+          <a
+            key={i}
+            href={p}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#185FA5", textDecoration: "underline" }}
+          >
+            {p}
+          </a>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 /**
  * sign-generator 는 viewBox 없이 width/height 만 세팅하므로,
  * CSS로 SVG 를 축소하면 내용이 clipping 된다. viewBox 를 주입해 scalable 하게.
@@ -210,10 +234,13 @@ export default async function ApprovalDetailPage({
               <span style={{ width: 60, color: "#9CA3AF" }}>
                 {ACTION_KO[a.action] ?? a.action}
               </span>
-              <span style={{ flex: 1 }}>
+              <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
                 <strong>{actorMap.get(a.actor_id) ?? "-"}</strong>
                 {a.comment && (
-                  <span style={{ color: "#6B7280" }}> · {a.comment}</span>
+                  <span style={{ color: "#6B7280" }}>
+                    {" · "}
+                    <Linkify text={a.comment} />
+                  </span>
                 )}
               </span>
               <span style={{ color: "#9CA3AF" }}>
@@ -379,9 +406,11 @@ function ApprovalStep({
             borderRadius: 6,
             border: "1px solid rgba(0,0,0,0.04)",
             whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
           }}
         >
-          {comment}
+          <Linkify text={comment} />
         </div>
       )}
     </li>
@@ -399,7 +428,9 @@ function LeaveDetails({ payload }: { payload: LeaveP }) {
         {payload.start} ~ {payload.end} ({payload.days}일)
       </dd>
       <dt>사유</dt>
-      <dd style={{ whiteSpace: "pre-wrap" }}>{payload.reason}</dd>
+      <dd style={ddText}>
+        <Linkify text={payload.reason} />
+      </dd>
     </dl>
   );
 }
@@ -412,7 +443,9 @@ function ExpenseDetails({ payload }: { payload: ExpenseP }) {
       <dt>용도</dt>
       <dd>{payload.purpose}</dd>
       <dt>내용</dt>
-      <dd style={{ whiteSpace: "pre-wrap" }}>{payload.content}</dd>
+      <dd style={ddText}>
+        <Linkify text={payload.content} />
+      </dd>
     </dl>
   );
 }
@@ -425,7 +458,9 @@ function LeaveOfAbsenceDetails({ payload }: { payload: LeaveOfAbsenceP }) {
         {payload.start} ~ {payload.end}
       </dd>
       <dt>사유</dt>
-      <dd style={{ whiteSpace: "pre-wrap" }}>{payload.reason}</dd>
+      <dd style={ddText}>
+        <Linkify text={payload.reason} />
+      </dd>
     </dl>
   );
 }
@@ -436,7 +471,9 @@ function ReinstatementDetails({ payload }: { payload: ReinstatementP }) {
       <dt>복귀 예정일</dt>
       <dd style={{ fontWeight: 700 }}>{payload.return_date}</dd>
       <dt>사유</dt>
-      <dd style={{ whiteSpace: "pre-wrap" }}>{payload.reason}</dd>
+      <dd style={ddText}>
+        <Linkify text={payload.reason} />
+      </dd>
     </dl>
   );
 }
@@ -483,8 +520,14 @@ const card: React.CSSProperties = {
 const h2: React.CSSProperties = { fontSize: 14, fontWeight: 700, marginBottom: 12 };
 const dl: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "100px 1fr",
+  gridTemplateColumns: "100px minmax(0, 1fr)",
   rowGap: 10,
   fontSize: 14,
   color: "#374151",
+};
+const ddText: React.CSSProperties = {
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+  minWidth: 0,
 };
