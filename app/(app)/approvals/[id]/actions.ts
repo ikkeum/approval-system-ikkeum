@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { insertLeaveEvent } from "@/lib/google-calendar";
 
 async function rpcAdvance(
   id: number,
@@ -20,8 +21,53 @@ async function rpcAdvance(
   return {};
 }
 
+async function maybeRegisterLeaveOnCalendar(id: number) {
+  try {
+    const supabase = await createClient();
+    const { data: row } = await supabase
+      .from("approvals")
+      .select("status,type,payload,author_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!row || row.status !== "APPROVED" || row.type !== "leave") return;
+
+    const { data: author } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", row.author_id)
+      .maybeSingle();
+    if (!author?.name) return;
+
+    const payload = row.payload as {
+      leaveType?: string;
+      start?: string;
+      end?: string;
+    };
+    if (!payload.start || !payload.end) return;
+    if (
+      payload.leaveType !== "연차" &&
+      payload.leaveType !== "오전반차" &&
+      payload.leaveType !== "오후반차"
+    ) {
+      return;
+    }
+
+    await insertLeaveEvent({
+      name: author.name,
+      leaveType: payload.leaveType,
+      start: payload.start,
+      end: payload.end,
+    });
+  } catch (e) {
+    console.error("[calendar] failed to register leave event", e);
+  }
+}
+
 export async function approveAction(id: number, comment: string) {
-  return rpcAdvance(id, "approve", comment);
+  const result = await rpcAdvance(id, "approve", comment);
+  if (result.error) return result;
+  await maybeRegisterLeaveOnCalendar(id);
+  return result;
 }
 
 export async function rejectAction(id: number, comment: string) {
