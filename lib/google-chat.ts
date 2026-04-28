@@ -84,8 +84,13 @@ export type ChatCard = {
 
 /**
  * Workspace 사용자(이메일)에게 카드 DM을 보낸다.
- * - spaces:setUp: DM 공간이 없으면 생성, 있으면 기존 반환 (idempotent)
- * - 그 후 cardsV2 메시지 POST
+ *
+ * 동작:
+ * 1) spaces.findDirectMessage 로 봇과 사용자 간 기존 DM 공간을 찾는다.
+ * 2) 해당 공간에 cardsV2 메시지 POST.
+ *
+ * 전제: 봇이 사용자의 Chat에 이미 추가돼 있어야 한다 (사용자가 직접 봇과 DM 시작
+ * 또는 관리자가 Marketplace로 도메인 푸시). app 인증으로 신규 DM을 생성할 수 없다.
  *
  * 반환: 성공 여부. 실패해도 throw 하지 않음 (호출부는 fire-and-forget).
  */
@@ -96,31 +101,28 @@ export async function sendDmCard(
   const token = await getAccessToken();
   if (!token) return false;
 
-  const setupRes = await fetch(
-    "https://chat.googleapis.com/v1/spaces:setup",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        space: { spaceType: "DIRECT_MESSAGE" },
-        memberships: [
-          { member: { name: `users/${toEmail}`, type: "HUMAN" } },
-        ],
-      }),
-    },
-  );
-  if (!setupRes.ok) {
-    console.error(
-      "[chat] space setup failed",
-      setupRes.status,
-      await setupRes.text(),
+  const findUrl =
+    "https://chat.googleapis.com/v1/spaces:findDirectMessage?name=" +
+    encodeURIComponent(`users/${toEmail}`);
+  const findRes = await fetch(findUrl, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (findRes.status === 404) {
+    console.warn(
+      `[chat] DM space not found for ${toEmail} — user must open a DM with the bot first (or admin must push the bot via Marketplace)`,
     );
     return false;
   }
-  const space = (await setupRes.json()) as { name?: string };
+  if (!findRes.ok) {
+    console.error(
+      "[chat] findDirectMessage failed",
+      findRes.status,
+      await findRes.text(),
+    );
+    return false;
+  }
+  const space = (await findRes.json()) as { name?: string };
   if (!space.name) return false;
 
   const msgRes = await fetch(
