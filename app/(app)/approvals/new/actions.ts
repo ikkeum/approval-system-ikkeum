@@ -17,6 +17,7 @@ import {
   type ChainStep,
 } from "@/lib/templates";
 import { resolveChainApprovers } from "@/lib/approvers";
+import { notifyApprovalEvent } from "@/lib/notifications";
 
 export type NewState = { error?: string } | null;
 
@@ -138,6 +139,7 @@ async function insertApprovalWithSteps(
     return { error: se.message };
   }
 
+  await notifyApprovalEvent(approvalId, "submitted");
   return { id: approvalId };
 }
 

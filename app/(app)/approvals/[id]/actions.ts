@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { insertLeaveEvent } from "@/lib/google-calendar";
 import { resolveChainApprovers } from "@/lib/approvers";
 import { loadTemplateById } from "@/lib/templates";
+import { notifyApprovalEvent } from "@/lib/notifications";
 
 async function rpcAdvance(
   id: number,
@@ -69,12 +70,16 @@ export async function approveAction(id: number, comment: string) {
   const result = await rpcAdvance(id, "approve", comment);
   if (result.error) return result;
   await maybeRegisterLeaveOnCalendar(id);
+  await notifyApprovalEvent(id, "approved");
   return result;
 }
 
 export async function rejectAction(id: number, comment: string) {
   if (!comment.trim()) return { error: "반려 사유를 입력해주세요." };
-  return rpcAdvance(id, "reject", comment);
+  const result = await rpcAdvance(id, "reject", comment);
+  if (result.error) return result;
+  await notifyApprovalEvent(id, "rejected");
+  return result;
 }
 
 export async function submitAction(
@@ -145,6 +150,7 @@ export async function submitAction(
     return { error: error.message };
   }
 
+  await notifyApprovalEvent(id, "submitted");
   revalidatePath(`/approvals/${id}`);
   redirect(`/approvals/${id}`);
 }
@@ -170,6 +176,7 @@ export async function cancelAction(id: number) {
     .update({ status: "CANCELED", decision_comment: "(작성자 철회)" })
     .eq("id", id);
   if (error) return { error: error.message };
+  await notifyApprovalEvent(id, "canceled");
   revalidatePath(`/approvals/${id}`);
   return {};
 }
