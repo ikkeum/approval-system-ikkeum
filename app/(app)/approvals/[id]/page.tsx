@@ -6,6 +6,7 @@ import StatusBadge, { TypeTag } from "@/components/StatusBadge";
 import { formatDate, formatDateTime, formatKRW } from "@/lib/format";
 import DecisionPanel from "./DecisionPanel";
 import type { ApprovalRow } from "@/lib/approvals";
+import { autoRoutedApproverId, listApproverCandidates } from "@/lib/approvers";
 
 const ACTION_KO: Record<string, string> = {
   submit: "제출",
@@ -117,11 +118,23 @@ export default async function ApprovalDetailPage({
 
   const isAuthor = row.author_id === user!.id;
   const isApprover = row.approver_id === user!.id;
+  const isAuthorDraft = isAuthor && row.status === "DRAFT";
+  const [draftCandidates, draftDefaultApproverId] = isAuthorDraft
+    ? await Promise.all([
+        listApproverCandidates(supabase, user!.id),
+        autoRoutedApproverId(supabase, user!.id),
+      ])
+    : [[], null];
+
   const mode =
     isApprover && row.status === "PENDING"
       ? ({ kind: "approver", status: "PENDING" } as const)
-      : isAuthor && row.status === "DRAFT"
-        ? ({ kind: "author_draft" } as const)
+      : isAuthorDraft
+        ? ({
+            kind: "author_draft",
+            candidates: draftCandidates,
+            defaultApproverId: draftDefaultApproverId,
+          } as const)
         : isAuthor && row.status === "PENDING"
           ? ({ kind: "author_pending" } as const)
           : ({ kind: "readonly" } as const);

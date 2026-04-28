@@ -10,6 +10,10 @@ import {
   createCareerCertAction,
 } from "./actions";
 import { APPROVAL_TYPES, type ApprovalType } from "@/lib/approvals";
+import {
+  autoRoutedApproverId,
+  listApproverCandidates,
+} from "@/lib/approvers";
 
 const VALID_TYPES = APPROVAL_TYPES.map((t) => t.key);
 
@@ -30,43 +34,10 @@ export default async function NewApprovalPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 작성자 팀 확인 → 결재자 예측
-  const { data: me } = await supabase
-    .from("profiles")
-    .select("team_id")
-    .eq("id", user!.id)
-    .maybeSingle();
-
-  let approverLabel = "대표";
-  let approverName: string | null = null;
-
-  if (me?.team_id) {
-    const { data: team } = await supabase
-      .from("teams")
-      .select("leader_id, leader:profiles!teams_leader_id_fkey(name, dept)")
-      .eq("id", me.team_id)
-      .maybeSingle<{
-        leader_id: string | null;
-        leader: { name: string; dept: string | null } | null;
-      }>();
-    if (team?.leader_id && team.leader_id !== user!.id && team.leader) {
-      approverLabel = "팀장";
-      approverName = `${team.leader.name}${team.leader.dept ? ` · ${team.leader.dept}` : ""}`;
-    }
-  }
-
-  if (!approverName) {
-    const { data: exec } = await supabase
-      .from("profiles")
-      .select("name,dept")
-      .eq("is_executive", true)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (exec) {
-      approverName = `${exec.name}${exec.dept ? ` · ${exec.dept}` : ""}`;
-    }
-  }
+  const [candidates, defaultApproverId] = await Promise.all([
+    listApproverCandidates(supabase, user!.id),
+    autoRoutedApproverId(supabase, user!.id),
+  ]);
 
   return (
     <main style={{ padding: "32px 40px", maxWidth: 720, margin: "0 auto" }}>
@@ -74,15 +45,25 @@ export default async function NewApprovalPage({
         {typeMeta.label}
       </h1>
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 24 }}>
-        결재 라인: <strong>본인(기안)</strong> → <strong>{approverLabel}</strong>
-        {approverName ? ` (${approverName})` : ""}
-        . 제출하면 {approverLabel}에게 대기 상태로 전달됩니다.
+        본인(기안) → 선택한 결재자 순으로 진행됩니다. 제출하면 결재자에게 대기 상태로 전달됩니다.
       </p>
 
-      {type === "leave" && <LeaveForm />}
-      {type === "expense" && <ExpenseForm />}
+      {type === "leave" && (
+        <LeaveForm
+          candidates={candidates}
+          defaultApproverId={defaultApproverId}
+        />
+      )}
+      {type === "expense" && (
+        <ExpenseForm
+          candidates={candidates}
+          defaultApproverId={defaultApproverId}
+        />
+      )}
       {type === "leave_of_absence" && (
         <SimpleForm
+          candidates={candidates}
+          defaultApproverId={defaultApproverId}
           action={createLeaveOfAbsenceAction}
           fields={[
             {
@@ -104,6 +85,8 @@ export default async function NewApprovalPage({
       )}
       {type === "reinstatement" && (
         <SimpleForm
+          candidates={candidates}
+          defaultApproverId={defaultApproverId}
           action={createReinstatementAction}
           fields={[
             {
@@ -125,6 +108,8 @@ export default async function NewApprovalPage({
       )}
       {type === "employment_cert" && (
         <SimpleForm
+          candidates={candidates}
+          defaultApproverId={defaultApproverId}
           action={createEmploymentCertAction}
           fields={[
             {
@@ -156,6 +141,8 @@ export default async function NewApprovalPage({
       )}
       {type === "career_cert" && (
         <SimpleForm
+          candidates={candidates}
+          defaultApproverId={defaultApproverId}
           action={createCareerCertAction}
           fields={[
             {

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { insertLeaveEvent } from "@/lib/google-calendar";
+import { resolveApproverId } from "@/lib/approvers";
 
 async function rpcAdvance(
   id: number,
@@ -75,8 +76,7 @@ export async function rejectAction(id: number, comment: string) {
   return rpcAdvance(id, "reject", comment);
 }
 
-export async function submitAction(id: number) {
-  // 1단계(기안) = 본인. 2단계 = 팀장 OR 대표 (팀 라우팅).
+export async function submitAction(id: number, chosenApproverId: string | null) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -92,38 +92,12 @@ export async function submitAction(id: number) {
   if (row.author_id !== user.id) return { error: "권한 없음" };
   if (row.status !== "DRAFT") return { error: "임시저장 상태만 제출 가능" };
 
-  // 팀 라우팅
-  const { data: author } = await supabase
-    .from("profiles")
-    .select("team_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  let approverId: string | null = null;
-  if (author?.team_id) {
-    const { data: team } = await supabase
-      .from("teams")
-      .select("leader_id")
-      .eq("id", author.team_id)
-      .maybeSingle();
-    if (team?.leader_id && team.leader_id !== user.id) {
-      approverId = team.leader_id;
-    }
-  }
-  if (!approverId) {
-    const { data: exec } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("is_executive", true)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    approverId = exec?.id ?? null;
-  }
-  if (!approverId)
-    return { error: "결재자를 결정할 수 없습니다. 관리자에게 문의하세요." };
-  if (approverId === user.id)
-    return { error: "본인이 결재 대상입니다. 결재 라인 설정을 확인하세요." };
+  const { id: approverId, error: approverErr } = await resolveApproverId(
+    supabase,
+    user.id,
+    chosenApproverId,
+  );
+  if (approverErr) return { error: approverErr };
 
   const { error } = await supabase
     .from("approvals")

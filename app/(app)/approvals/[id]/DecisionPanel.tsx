@@ -9,10 +9,15 @@ import {
   submitAction,
   deleteDraftAction,
 } from "./actions";
+import type { ApproverCandidate } from "@/lib/approvers";
 
 type Mode =
   | { kind: "approver"; status: "PENDING" }
-  | { kind: "author_draft" }
+  | {
+      kind: "author_draft";
+      candidates: ApproverCandidate[];
+      defaultApproverId: string | null;
+    }
   | { kind: "author_pending" }
   | { kind: "readonly" };
 
@@ -25,6 +30,9 @@ export default function DecisionPanel({
 }) {
   const router = useRouter();
   const [comment, setComment] = useState("");
+  const [approverId, setApproverId] = useState<string>(
+    mode.kind === "author_draft" ? (mode.defaultApproverId ?? "") : "",
+  );
   const [err, setErr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -76,8 +84,34 @@ export default function DecisionPanel({
         <>
           <h2 style={h2}>제출 / 삭제</h2>
           <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 12 }}>
-            제출하면 본인(기안) → 대표 순으로 결재가 진행됩니다.
+            제출하면 본인(기안) → 선택한 결재자 순으로 결재가 진행됩니다.
           </p>
+          <label
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#6B7280",
+              marginBottom: 6,
+              display: "block",
+            }}
+          >
+            결재자
+          </label>
+          <select
+            value={approverId}
+            onChange={(e) => setApproverId(e.target.value)}
+            style={input}
+          >
+            {!mode.defaultApproverId && (
+              <option value="">결재자를 선택하세요</option>
+            )}
+            {mode.candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {c.is_executive ? " · 대표" : c.dept ? ` · ${c.dept}` : ""}
+              </option>
+            ))}
+          </select>
           <div
             style={{
               display: "flex",
@@ -94,8 +128,8 @@ export default function DecisionPanel({
               삭제
             </button>
             <button
-              disabled={pending}
-              onClick={wrap(() => submitAction(id))}
+              disabled={pending || !approverId}
+              onClick={wrap(() => submitAction(id, approverId || null))}
               style={btnPrimary}
             >
               제출

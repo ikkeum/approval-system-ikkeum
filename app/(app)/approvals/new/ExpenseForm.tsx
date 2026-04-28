@@ -2,10 +2,18 @@
 
 import { useActionState } from "react";
 import { createExpenseAction, type NewState } from "./actions";
+import ApproverPicker from "./ApproverPicker";
+import type { ApproverCandidate } from "@/lib/approvers";
 
 const PURPOSES = ["장비구매", "외주비", "교육비", "출장비", "복리후생", "인프라/서버", "기타"];
 
-export default function ExpenseForm() {
+export default function ExpenseForm({
+  candidates,
+  defaultApproverId,
+}: {
+  candidates: ApproverCandidate[];
+  defaultApproverId: string | null;
+}) {
   const [state, formAction, pending] = useActionState<NewState, FormData>(
     createExpenseAction,
     null,
@@ -41,6 +49,11 @@ export default function ExpenseForm() {
           style={{ ...input, resize: "vertical" }}
         />
       </Field>
+
+      <ApproverPicker
+        candidates={candidates}
+        defaultApproverId={defaultApproverId}
+      />
 
       {state?.error && <Err msg={state.error} />}
 

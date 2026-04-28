@@ -2,8 +2,16 @@
 
 import { useActionState, useState } from "react";
 import { createLeaveAction, type NewState } from "./actions";
+import ApproverPicker from "./ApproverPicker";
+import type { ApproverCandidate } from "@/lib/approvers";
 
-export default function LeaveForm() {
+export default function LeaveForm({
+  candidates,
+  defaultApproverId,
+}: {
+  candidates: ApproverCandidate[];
+  defaultApproverId: string | null;
+}) {
   const [state, formAction, pending] = useActionState<NewState, FormData>(
     createLeaveAction,
     null,
@@ -50,6 +58,11 @@ export default function LeaveForm() {
           style={{ ...input, resize: "vertical" }}
         />
       </Field>
+
+      <ApproverPicker
+        candidates={candidates}
+        defaultApproverId={defaultApproverId}
+      />
 
       {state?.error && <Err msg={state.error} />}
 

@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import type { NewState } from "./actions";
+import ApproverPicker from "./ApproverPicker";
+import type { ApproverCandidate } from "@/lib/approvers";
 
 type Field =
   | { kind: "date"; name: string; label: string; required?: boolean }
@@ -36,9 +38,13 @@ type Field =
 export default function SimpleForm({
   fields,
   action,
+  candidates,
+  defaultApproverId,
 }: {
   fields: Field[];
   action: (_prev: NewState, fd: FormData) => Promise<NewState>;
+  candidates: ApproverCandidate[];
+  defaultApproverId: string | null;
 }) {
   const [state, formAction, pending] = useActionState<NewState, FormData>(
     action,
@@ -48,6 +54,10 @@ export default function SimpleForm({
   return (
     <form action={formAction} style={card}>
       {fields.map((f, i) => renderField(f, i))}
+      <ApproverPicker
+        candidates={candidates}
+        defaultApproverId={defaultApproverId}
+      />
       {state?.error && <Err msg={state.error} />}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button
