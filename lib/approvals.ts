@@ -29,14 +29,12 @@ export const APPROVAL_TYPES: {
 export type ApprovalRow = {
   id: number;
   type: ApprovalType;
+  template_id: string | null;
   title: string;
   author_id: string;
   approver_id: string | null;
-  first_approver_id: string | null;
-  second_approver_id: string | null;
-  step: 1 | 2;
-  first_decided_at: string | null;
-  first_comment: string | null;
+  current_step: number;
+  total_steps: number;
   status: ApprovalStatus;
   payload: Record<string, unknown>;
   attachments: unknown[];
@@ -45,6 +43,30 @@ export type ApprovalRow = {
   decided_at: string | null;
   decision_comment: string | null;
   updated_at: string;
+};
+
+export type ApprovalStepStatus =
+  | "WAITING"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "SKIPPED";
+
+export type ApprovalStepMode =
+  | "author"
+  | "fixed"
+  | "team_leader"
+  | "executive"
+  | "picker";
+
+export type ApprovalStepRow = {
+  approval_id: number;
+  step_index: number;
+  approver_id: string;
+  mode: ApprovalStepMode;
+  status: ApprovalStepStatus;
+  decided_at: string | null;
+  comment: string | null;
 };
 
 export const STATUS_KO: Record<ApprovalStatus, string> = {

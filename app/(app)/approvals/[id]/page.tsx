@@ -5,8 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import StatusBadge, { TypeTag } from "@/components/StatusBadge";
 import { formatDate, formatDateTime, formatKRW } from "@/lib/format";
 import DecisionPanel from "./DecisionPanel";
-import type { ApprovalRow } from "@/lib/approvals";
+import type {
+  ApprovalRow,
+  ApprovalStepRow,
+  ApprovalStepStatus,
+  ApprovalStepMode,
+} from "@/lib/approvals";
 import { autoRoutedApproverId, listApproverCandidates } from "@/lib/approvers";
+import { loadTemplateById, type ChainStep } from "@/lib/templates";
 
 const ACTION_KO: Record<string, string> = {
   submit: "제출",
@@ -56,6 +62,16 @@ function normalizeStampSvg(svg: string | null | undefined): string {
   return svg.replace(/<svg([^>]*)>/, `<svg$1 viewBox="0 0 ${w} ${h}">`);
 }
 
+type StepView = {
+  index: number;
+  label: string;
+  mode: ApprovalStepMode;
+  approver_id: string | null;
+  status: ApprovalStepStatus;
+  decided_at: string | null;
+  comment: string | null;
+};
+
 export default async function ApprovalDetailPage({
   params,
 }: {
@@ -72,36 +88,81 @@ export default async function ApprovalDetailPage({
 
   const { data: row } = await supabase
     .from("approvals")
-    .select("*")
+    .select(
+      "id,type,template_id,title,author_id,approver_id,current_step,total_steps,status,payload,attachments,created_at,submitted_at,decided_at,decision_comment,updated_at",
+    )
     .eq("id", id)
     .maybeSingle<ApprovalRow>();
   if (!row) notFound();
 
+  // 템플릿 + step 행 로드
+  const [template, stepsRes] = await Promise.all([
+    row.template_id ? loadTemplateById(supabase, row.template_id) : null,
+    supabase
+      .from("approval_steps")
+      .select("approval_id,step_index,approver_id,mode,status,decided_at,comment")
+      .eq("approval_id", id)
+      .order("step_index", { ascending: true }),
+  ]);
+  const stepRows = (stepsRes.data ?? []) as ApprovalStepRow[];
+
+  const isAuthor = row.author_id === user!.id;
+  const isApprover = row.approver_id === user!.id;
+  const isAuthorDraft = isAuthor && row.status === "DRAFT";
+
+  // DRAFT: step 행이 없으니 chain 기반으로 미리보기 합성
+  // 비-DRAFT: stepRows 그대로
+  const chain: ChainStep[] = template?.chain ?? [];
+  const draftDefaultApproverId = isAuthorDraft
+    ? await autoRoutedApproverId(supabase, user!.id)
+    : null;
+
+  const stepViews: StepView[] = stepRows.length
+    ? stepRows.map((s) => {
+        const c = chain.find((x) => x.index === s.step_index);
+        return {
+          index: s.step_index,
+          label: c?.label ?? `${s.step_index}단계`,
+          mode: s.mode,
+          approver_id: s.approver_id,
+          status: s.status,
+          decided_at: s.decided_at,
+          comment: s.comment,
+        };
+      })
+    : chain.map((c) => ({
+        index: c.index,
+        label: c.label,
+        mode: c.mode,
+        approver_id:
+          c.mode === "author"
+            ? row.author_id
+            : c.mode === "fixed"
+              ? c.approver_id ?? null
+              : c.mode === "picker"
+                ? draftDefaultApproverId
+                : null,
+        status: "WAITING" as ApprovalStepStatus,
+        decided_at: null,
+        comment: null,
+      }));
+
+  // 표시할 사람들 (작성자 + 모든 step 결재자)
   const involvedIds = Array.from(
     new Set(
-      [
-        row.author_id,
-        row.approver_id,
-        row.first_approver_id,
-        row.second_approver_id,
-      ].filter(Boolean) as string[],
+      [row.author_id, row.approver_id, ...stepViews.map((s) => s.approver_id)]
+        .filter(Boolean) as string[],
     ),
   );
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id,name,dept,role,is_executive,stamp_svg")
-    .in("id", involvedIds);
+    .in(
+      "id",
+      involvedIds.length ? involvedIds : ["00000000-0000-0000-0000-000000000000"],
+    );
   const pmap = new Map((profiles ?? []).map((p) => [p.id, p]));
   const author = pmap.get(row.author_id);
-  const firstApprover = row.first_approver_id
-    ? pmap.get(row.first_approver_id)
-    : null;
-  const secondApprover = row.second_approver_id
-    ? pmap.get(row.second_approver_id)
-    : null;
-
-  // 2단계 라벨: 대표면 "대표", 아니면 "팀장"
-  const secondLabel = secondApprover?.is_executive ? "대표" : "팀장";
 
   const { data: actions } = await supabase
     .from("approval_actions")
@@ -113,18 +174,25 @@ export default async function ApprovalDetailPage({
   const { data: actors } = await supabase
     .from("profiles")
     .select("id,name")
-    .in("id", actorIds.length ? actorIds : ["00000000-0000-0000-0000-000000000000"]);
+    .in(
+      "id",
+      actorIds.length ? actorIds : ["00000000-0000-0000-0000-000000000000"],
+    );
   const actorMap = new Map((actors ?? []).map((a) => [a.id, a.name]));
 
-  const isAuthor = row.author_id === user!.id;
-  const isApprover = row.approver_id === user!.id;
-  const isAuthorDraft = isAuthor && row.status === "DRAFT";
-  const [draftCandidates, draftDefaultApproverId] = isAuthorDraft
-    ? await Promise.all([
-        listApproverCandidates(supabase, user!.id),
-        autoRoutedApproverId(supabase, user!.id),
-      ])
-    : [[], null];
+  // DecisionPanel 모드
+  const draftCandidates = isAuthorDraft
+    ? await listApproverCandidates(supabase, user!.id)
+    : [];
+  const pickerSteps = isAuthorDraft
+    ? chain
+        .filter((c) => c.mode === "picker")
+        .map((c) => ({
+          index: c.index,
+          label: c.label,
+          defaultApproverId: draftDefaultApproverId,
+        }))
+    : [];
 
   const mode =
     isApprover && row.status === "PENDING"
@@ -133,11 +201,17 @@ export default async function ApprovalDetailPage({
         ? ({
             kind: "author_draft",
             candidates: draftCandidates,
-            defaultApproverId: draftDefaultApproverId,
+            pickerSteps,
           } as const)
         : isAuthor && row.status === "PENDING"
           ? ({ kind: "author_pending" } as const)
           : ({ kind: "readonly" } as const);
+
+  // 타임라인 그리드: 2개면 1x2, 그 이상이면 minmax 컬럼
+  const stepsGridCols =
+    stepViews.length <= 2
+      ? `repeat(${Math.max(stepViews.length, 1)}, minmax(0, 1fr))`
+      : `repeat(${stepViews.length}, minmax(0, 1fr))`;
 
   return (
     <main style={{ padding: "32px 40px", maxWidth: 1100, margin: "0 auto" }}>
@@ -182,28 +256,18 @@ export default async function ApprovalDetailPage({
             listStyle: "none",
             padding: 0,
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: stepsGridCols,
             gap: 12,
           }}
         >
-          <ApprovalStep
-            label="담당 (기안)"
-            step={1}
-            currentStep={row.step}
-            status={row.status}
-            person={firstApprover}
-            decidedAt={row.first_decided_at}
-            comment={row.first_comment}
-          />
-          <ApprovalStep
-            label={secondLabel}
-            step={2}
-            currentStep={row.step}
-            status={row.status}
-            person={secondApprover}
-            decidedAt={row.decided_at}
-            comment={row.decision_comment}
-          />
+          {stepViews.map((sv) => (
+            <ApprovalStep
+              key={sv.index}
+              view={sv}
+              person={sv.approver_id ? pmap.get(sv.approver_id) : null}
+              isDraft={row.status === "DRAFT"}
+            />
+          ))}
         </ol>
       </section>
 
@@ -228,7 +292,6 @@ export default async function ApprovalDetailPage({
           <CareerCertDetails payload={row.payload as CareerCertP} />
         )}
       </section>
-
 
       <section style={card}>
         <h2 style={h2}>히스토리</h2>
@@ -294,55 +357,50 @@ type Person =
   | undefined;
 
 function ApprovalStep({
-  label,
-  step,
-  currentStep,
-  status,
+  view,
   person,
-  decidedAt,
-  comment,
+  isDraft,
 }: {
-  label: string;
-  step: 1 | 2;
-  currentStep: 1 | 2;
-  status: string;
+  view: StepView;
   person: Person;
-  decidedAt: string | null;
-  comment: string | null;
+  isDraft: boolean;
 }) {
-  let state: "pending" | "current" | "approved" | "rejected" | "skipped";
-  if (status === "APPROVED") state = "approved";
-  else if (status === "REJECTED") {
-    // 반려: 현재 단계가 반려됨. 1단계 반려면 2단계는 skipped.
-    state =
-      step === currentStep
-        ? "rejected"
-        : step < currentStep
-          ? "approved"
-          : "skipped";
-  } else if (status === "CANCELED") {
-    state = step < currentStep ? "approved" : "skipped";
-  } else if (status === "PENDING") {
-    state = step < currentStep ? "approved" : step === currentStep ? "current" : "pending";
-  } else {
-    state = "pending"; // DRAFT
-  }
+  type DisplayState =
+    | "draft"
+    | "pending"
+    | "current"
+    | "approved"
+    | "rejected"
+    | "skipped";
 
-  const palette = {
+  let state: DisplayState;
+  if (isDraft) state = "draft";
+  else if (view.status === "APPROVED") state = "approved";
+  else if (view.status === "REJECTED") state = "rejected";
+  else if (view.status === "SKIPPED") state = "skipped";
+  else if (view.status === "PENDING") state = "current";
+  else state = "pending"; // WAITING
+
+  const palette: Record<
+    DisplayState,
+    { bg: string; fg: string; bd: string; label: string }
+  > = {
+    draft: { bg: "#EFF6FF", fg: "#2563EB", bd: "#BFDBFE", label: "예정" },
     pending: { bg: "#F9FAFB", fg: "#9CA3AF", bd: "#E5E7EB", label: "대기" },
     current: { bg: "#FFF8F0", fg: "#D97706", bd: "#FBBF24", label: "진행 중" },
     approved: { bg: "#F0FDF4", fg: "#16A34A", bd: "#4ADE80", label: "승인" },
     rejected: { bg: "#FEF2F2", fg: "#DC2626", bd: "#FCA5A5", label: "반려" },
     skipped: { bg: "#F3F4F6", fg: "#9CA3AF", bd: "#E5E7EB", label: "-" },
-  }[state];
+  };
+  const p = palette[state];
 
   const showStamp = state === "approved" && person?.stamp_svg;
 
   return (
     <li
       style={{
-        border: `1.5px solid ${palette.bd}`,
-        background: palette.bg,
+        border: `1.5px solid ${p.bd}`,
+        background: p.bg,
         borderRadius: 10,
         padding: "14px 16px",
         position: "relative",
@@ -357,20 +415,20 @@ function ApprovalStep({
         }}
       >
         <span style={{ fontSize: 12, fontWeight: 700, color: "#6B7280" }}>
-          {step}단계 · {label}
+          {view.index}단계 · {view.label}
         </span>
         <span
           style={{
             fontSize: 11,
             fontWeight: 700,
-            color: palette.fg,
+            color: p.fg,
             background: "#fff",
-            border: `1px solid ${palette.bd}`,
+            border: `1px solid ${p.bd}`,
             padding: "2px 8px",
             borderRadius: 6,
           }}
         >
-          {palette.label}
+          {p.label}
         </span>
       </div>
       <div
@@ -387,9 +445,9 @@ function ApprovalStep({
           {person?.dept && (
             <div style={{ fontSize: 12, color: "#6B7280" }}>{person.dept}</div>
           )}
-          {decidedAt && (
+          {view.decided_at && (
             <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
-              {formatDateTime(decidedAt)}
+              {formatDateTime(view.decided_at)}
             </div>
           )}
         </div>
@@ -408,7 +466,7 @@ function ApprovalStep({
           />
         )}
       </div>
-      {comment && (state === "approved" || state === "rejected") && (
+      {view.comment && (state === "approved" || state === "rejected") && (
         <div
           style={{
             marginTop: 8,
@@ -423,13 +481,12 @@ function ApprovalStep({
             wordBreak: "break-word",
           }}
         >
-          <Linkify text={comment} />
+          <Linkify text={view.comment} />
         </div>
       )}
     </li>
   );
 }
-
 
 function LeaveDetails({ payload }: { payload: LeaveP }) {
   return (

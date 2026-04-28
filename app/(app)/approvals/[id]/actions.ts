@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { insertLeaveEvent } from "@/lib/google-calendar";
-import { resolveApproverId } from "@/lib/approvers";
+import { resolveChainApprovers } from "@/lib/approvers";
+import { loadTemplateById } from "@/lib/templates";
 
 async function rpcAdvance(
   id: number,
@@ -76,7 +77,10 @@ export async function rejectAction(id: number, comment: string) {
   return rpcAdvance(id, "reject", comment);
 }
 
-export async function submitAction(id: number, chosenApproverId: string | null) {
+export async function submitAction(
+  id: number,
+  pickerSelections: Record<number, string>,
+) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -85,32 +89,61 @@ export async function submitAction(id: number, chosenApproverId: string | null) 
 
   const { data: row } = await supabase
     .from("approvals")
-    .select("status,author_id")
+    .select("status,author_id,template_id")
     .eq("id", id)
     .single();
   if (!row) return { error: "문서를 찾을 수 없습니다." };
   if (row.author_id !== user.id) return { error: "권한 없음" };
   if (row.status !== "DRAFT") return { error: "임시저장 상태만 제출 가능" };
+  if (!row.template_id) return { error: "템플릿이 지정되지 않았습니다." };
 
-  const { id: approverId, error: approverErr } = await resolveApproverId(
+  const template = await loadTemplateById(supabase, row.template_id);
+  if (!template) return { error: "템플릿을 찾을 수 없습니다." };
+
+  const resolution = await resolveChainApprovers(
     supabase,
+    template.chain,
     user.id,
-    chosenApproverId,
+    pickerSelections,
   );
-  if (approverErr) return { error: approverErr };
+  if (!resolution.ok) return { error: resolution.error };
+
+  const now = new Date().toISOString();
+  const stepRows = resolution.steps.map((s) => ({
+    approval_id: id,
+    step_index: s.index,
+    approver_id: s.approver_id,
+    mode: s.mode,
+    status: s.mode === "author" ? "APPROVED" : "WAITING",
+    decided_at: s.mode === "author" ? now : null,
+    comment: null as string | null,
+  }));
+
+  const firstPending = stepRows.find((r) => r.status !== "APPROVED");
+  if (!firstPending) {
+    return { error: "결재 라인이 모두 자동 승인 단계입니다. (관리자 문의)" };
+  }
+  firstPending.status = "PENDING";
+
+  const { error: stepErr } = await supabase
+    .from("approval_steps")
+    .insert(stepRows);
+  if (stepErr) return { error: stepErr.message };
 
   const { error } = await supabase
     .from("approvals")
     .update({
       status: "PENDING",
-      first_approver_id: user.id,
-      second_approver_id: approverId,
-      step: 2,
-      approver_id: approverId,
-      first_decided_at: new Date().toISOString(),
+      approver_id: firstPending.approver_id,
+      current_step: firstPending.step_index,
+      total_steps: template.chain.length,
     })
     .eq("id", id);
-  if (error) return { error: error.message };
+  if (error) {
+    // 정리: step 행 롤백 (best effort)
+    await supabase.from("approval_steps").delete().eq("approval_id", id);
+    return { error: error.message };
+  }
 
   revalidatePath(`/approvals/${id}`);
   redirect(`/approvals/${id}`);
