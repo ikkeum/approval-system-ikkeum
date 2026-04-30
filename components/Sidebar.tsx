@@ -7,6 +7,7 @@ import {
   Inbox,
   FileText,
   UserRound,
+  Clock,
   Settings,
   LogOut,
   type LucideIcon,
@@ -18,6 +19,7 @@ const BASE_ITEMS: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "대시보드" },
   { href: "/approvals", icon: Inbox, label: "결재함" },
   { href: "/mydocs", icon: FileText, label: "내 문서" },
+  { href: "/attendance", icon: Clock, label: "근태" },
   { href: "/profile", icon: UserRound, label: "프로필" },
 ];
 
