@@ -3,7 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PATHS = ["/login", "/signup", "/auth/confirm", "/auth/callback"];
+// /api/cron/* 는 Bearer 토큰(CRON_SECRET)으로 라우트 내부에서 인증한다.
+// 미들웨어의 세션 기반 리다이렉트가 막아버리면 GHA 등 외부 호출자가 로그인 HTML 을 받게 된다.
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/auth/confirm",
+  "/auth/callback",
+  "/api/cron",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
