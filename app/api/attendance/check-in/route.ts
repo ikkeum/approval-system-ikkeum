@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getClientIp } from "@/lib/ip";
-import { isIpAllowed, todayKst } from "@/lib/attendance";
+import { isIpAllowed, isWeekend, todayKst } from "@/lib/attendance";
 
 export const runtime = "nodejs";
 
@@ -22,8 +22,37 @@ export async function POST(request: Request) {
     );
   }
 
+  let force = false;
+  try {
+    const body = (await request.json()) as { force?: unknown } | null;
+    if (body && body.force === true) force = true;
+  } catch {
+    // empty body OK
+  }
+
   const workDate = todayKst();
   const now = new Date().toISOString();
+
+  // 휴일/주말 검증 (force 시 우회)
+  if (!force) {
+    const weekend = isWeekend(workDate);
+    const { data: holiday } = await supabase
+      .from("holidays")
+      .select("name")
+      .eq("date", workDate)
+      .maybeSingle();
+    if (weekend || holiday) {
+      const reason = holiday?.name ?? "주말";
+      return NextResponse.json(
+        {
+          error: `오늘은 ${reason}입니다.`,
+          requiresConfirm: true,
+          reason,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   const { data: existing, error: selErr } = await supabase
     .from("attendances")

@@ -87,3 +87,12 @@ export function yesterdayKst(now: Date = new Date()): string {
     timeZone: "Asia/Seoul",
   });
 }
+
+/**
+ * YYYY-MM-DD 가 KST 기준 토/일인지. 정오 KST 시각으로 변환해 요일을 본다.
+ */
+export function isWeekend(dateStr: string): boolean {
+  const d = new Date(`${dateStr}T12:00:00+09:00`);
+  const dow = d.getDay();
+  return dow === 0 || dow === 6;
+}

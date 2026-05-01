@@ -8,6 +8,7 @@ import {
   FileText,
   UserRound,
   Clock,
+  CalendarDays,
   Settings,
   LogOut,
   type LucideIcon,
@@ -23,11 +24,10 @@ const BASE_ITEMS: NavItem[] = [
   { href: "/profile", icon: UserRound, label: "프로필" },
 ];
 
-const ADMIN_ITEM: NavItem = {
-  href: "/admin/members",
-  icon: Settings,
-  label: "조직 관리",
-};
+const ADMIN_ITEMS: NavItem[] = [
+  { href: "/admin/members", icon: Settings, label: "조직 관리" },
+  { href: "/admin/holidays", icon: CalendarDays, label: "휴일 관리" },
+];
 
 export default function Sidebar({
   userName,
@@ -37,7 +37,7 @@ export default function Sidebar({
   isAdmin: boolean;
 }) {
   const pathname = usePathname();
-  const ITEMS = isAdmin ? [...BASE_ITEMS, ADMIN_ITEM] : BASE_ITEMS;
+  const ITEMS = isAdmin ? [...BASE_ITEMS, ...ADMIN_ITEMS] : BASE_ITEMS;
 
   return (
     <aside

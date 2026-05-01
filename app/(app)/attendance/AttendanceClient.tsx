@@ -31,6 +31,12 @@ function todayKstStr(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: KST });
 }
 
+function isWeekendStr(dateStr: string): boolean {
+  const d = new Date(`${dateStr}T12:00:00+09:00`);
+  const dow = d.getDay();
+  return dow === 0 || dow === 6;
+}
+
 function fmtTime(iso: string | null): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleTimeString("ko-KR", {
@@ -90,6 +96,9 @@ export default function AttendanceClient({
   const [year, setYear] = useState(today.getFullYear());
   const [month0, setMonth0] = useState(today.getMonth());
   const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [holidaysByDate, setHolidaysByDate] = useState<Map<string, string>>(
+    new Map(),
+  );
   const [myToday, setMyToday] = useState<Attendance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +108,8 @@ export default function AttendanceClient({
 
   const todayStr = todayKstStr();
   const isViewingSelf = selectedUserId === currentUserId;
+  const todayHolidayName = holidaysByDate.get(todayStr) ?? null;
+  const todayIsOff = !!todayHolidayName || isWeekendStr(todayStr);
 
   const fetchAttendances = useCallback(async () => {
     setLoading(true);
@@ -133,6 +144,25 @@ export default function AttendanceClient({
     }
   }, [todayStr]);
 
+  const fetchHolidays = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/holidays?year=${year}`);
+      const json = await res.json();
+      if (res.ok) {
+        const map = new Map<string, string>();
+        for (const h of (json.holidays ?? []) as {
+          date: string;
+          name: string;
+        }[]) {
+          map.set(h.date, h.name);
+        }
+        setHolidaysByDate(map);
+      }
+    } catch {
+      // silent
+    }
+  }, [year]);
+
   useEffect(() => {
     fetchAttendances();
   }, [fetchAttendances]);
@@ -141,11 +171,23 @@ export default function AttendanceClient({
     fetchMyToday();
   }, [fetchMyToday]);
 
+  useEffect(() => {
+    fetchHolidays();
+  }, [fetchHolidays]);
+
   const handleCheckIn = async () => {
+    if (todayIsOff) {
+      const reason = todayHolidayName ?? "주말";
+      if (!confirm(`오늘은 ${reason}입니다. 그래도 출근하시겠습니까?`)) return;
+    }
     setBusy("in");
     setError(null);
     try {
-      const res = await fetch("/api/attendance/check-in", { method: "POST" });
+      const res = await fetch("/api/attendance/check-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: todayIsOff }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "출근 실패");
       setMyToday(json.attendance);
@@ -252,6 +294,21 @@ export default function AttendanceClient({
               }}
             >
               오늘 ({todayStr})
+              {todayIsOff && (
+                <span
+                  style={{
+                    marginLeft: 8,
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: "#FEF2F2",
+                    color: "#DC2626",
+                  }}
+                >
+                  ⚠ {todayHolidayName ?? "주말"}
+                </span>
+              )}
             </div>
             <div style={{ display: "flex", gap: 24, fontSize: 14 }}>
               <div>
@@ -404,6 +461,13 @@ export default function AttendanceClient({
             const isPast = c.date < todayStr;
             const missing =
               c.inMonth && isPast && rec?.check_in_at && !rec.check_out_at;
+            const holidayName = holidaysByDate.get(c.date) ?? null;
+            const isHoliday = !!holidayName;
+            const cellBg = isToday
+              ? "#EFF6FF"
+              : isHoliday
+                ? "#FEF2F2"
+                : "#fff";
             return (
               <div
                 key={c.date + i}
@@ -412,24 +476,47 @@ export default function AttendanceClient({
                   padding: 8,
                   borderRight: dow !== 6 ? "1px solid #F3F4F6" : "none",
                   borderBottom: i < 35 ? "1px solid #F3F4F6" : "none",
-                  background: isToday ? "#EFF6FF" : "#fff",
+                  background: cellBg,
                   opacity: c.inMonth ? 1 : 0.35,
                 }}
               >
                 <div
                   style={{
-                    fontSize: 12,
-                    fontWeight: isToday ? 800 : 600,
-                    color:
-                      dow === 0
-                        ? "#DC2626"
-                        : dow === 6
-                          ? "#2563EB"
-                          : "#374151",
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: 6,
                     marginBottom: 6,
                   }}
                 >
-                  {c.day}
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: isToday ? 800 : 600,
+                      color:
+                        isHoliday || dow === 0
+                          ? "#DC2626"
+                          : dow === 6
+                            ? "#2563EB"
+                            : "#374151",
+                    }}
+                  >
+                    {c.day}
+                  </div>
+                  {c.inMonth && holidayName && (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#DC2626",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                      title={holidayName}
+                    >
+                      {holidayName}
+                    </div>
+                  )}
                 </div>
                 {c.inMonth && rec && (
                   <div style={{ fontSize: 11, lineHeight: 1.5 }}>
