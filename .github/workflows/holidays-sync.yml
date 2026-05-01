@@ -1,0 +1,36 @@
+name: Holidays Sync
+
+# 매월 1일 00:00 UTC (= KST 09:00) 에 공공데이터포털 특일정보로 휴일 동기화.
+# 당해년 + 익년을 모두 갱신하여 대체공휴일 변경/연말 전환을 자연스럽게 처리.
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync current year
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          year=$(date +%Y)
+          echo "Syncing $year..."
+          curl -fsSL -X POST "$APP_URL/api/cron/holidays?year=$year" \
+            -H "Authorization: Bearer $CRON_SECRET"
+          echo
+
+      - name: Sync next year
+        continue-on-error: true
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          year=$(( $(date +%Y) + 1 ))
+          echo "Syncing $year (best-effort, may not be published yet)..."
+          curl -fsSL -X POST "$APP_URL/api/cron/holidays?year=$year" \
+            -H "Authorization: Bearer $CRON_SECRET"
+          echo
