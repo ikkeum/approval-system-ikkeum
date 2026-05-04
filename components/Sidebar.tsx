@@ -9,6 +9,7 @@ import {
   UserRound,
   Clock,
   CalendarDays,
+  ClipboardEdit,
   Settings,
   LogOut,
   type LucideIcon,
@@ -27,6 +28,11 @@ const BASE_ITEMS: NavItem[] = [
 const ADMIN_ITEMS: NavItem[] = [
   { href: "/admin/members", icon: Settings, label: "조직 관리" },
   { href: "/admin/holidays", icon: CalendarDays, label: "휴일 관리" },
+  {
+    href: "/admin/attendance-corrections",
+    icon: ClipboardEdit,
+    label: "근무시각 정정",
+  },
 ];
 
 export default function Sidebar({
