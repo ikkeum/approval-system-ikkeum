@@ -33,6 +33,7 @@ const TYPE_STYLE: Record<ApprovalType, { bg: string; fg: string }> = {
   reinstatement: { bg: "#D1FAE5", fg: "#065F46" },
   employment_cert: { bg: "#E0E7FF", fg: "#3730A3" },
   career_cert: { bg: "#F3E8FF", fg: "#6B21A8" },
+  attendance_correction: { bg: "#FEF9C3", fg: "#854D0E" },
 };
 
 export function TypeTag({ type }: { type: ApprovalType }) {

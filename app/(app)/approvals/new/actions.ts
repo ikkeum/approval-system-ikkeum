@@ -9,6 +9,7 @@ import {
   ReinstatementPayload,
   EmploymentCertPayload,
   CareerCertPayload,
+  AttendanceCorrectionPayload,
 } from "@/lib/schemas";
 import { diffDays } from "@/lib/format";
 import {
@@ -375,6 +376,46 @@ export async function createCareerCertAction(
   const title = `경력증명서 신청${
     parsed.data.destination ? ` (${parsed.data.destination})` : ""
   }`;
+  const res = await insertApprovalWithSteps(
+    supabase,
+    user.id,
+    template,
+    parsed.data,
+    title,
+    submit,
+    readPickerSelections(template.chain, formData),
+  );
+  if (res.error) return { error: res.error };
+  redirect(`/approvals/${res.id}`);
+}
+
+export async function createAttendanceCorrectionAction(
+  _prev: NewState,
+  formData: FormData,
+): Promise<NewState> {
+  const supabase = await createClient();
+  const user = await getUser(supabase);
+  if (!user) return { error: "인증 필요" };
+  const { template, error: terr } = await loadTemplateOrErr(
+    supabase,
+    "attendance_correction",
+  );
+  if (!template) return { error: terr! };
+
+  const submit = formData.get("submit") === "1";
+  const payload = {
+    correction_date: formData.get("correction_date") as string,
+    check_in_time: (formData.get("check_in_time") as string) || "",
+    check_out_time: (formData.get("check_out_time") as string) || "",
+    reason: formData.get("reason") as string,
+  };
+  const parsed = AttendanceCorrectionPayload.safeParse(payload);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0]?.message ?? "입력값을 확인해주세요.";
+    return { error: first };
+  }
+
+  const title = `근무시각 조정 (${parsed.data.correction_date})`;
   const res = await insertApprovalWithSteps(
     supabase,
     user.id,
