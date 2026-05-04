@@ -11,7 +11,8 @@ export type ApprovalType =
   | "leave_of_absence"
   | "reinstatement"
   | "employment_cert"
-  | "career_cert";
+  | "career_cert"
+  | "attendance_correction";
 
 export const APPROVAL_TYPES: {
   key: ApprovalType;
@@ -24,6 +25,11 @@ export const APPROVAL_TYPES: {
   { key: "reinstatement", label: "복직원 신청", short: "복직" },
   { key: "employment_cert", label: "재직증명서 신청", short: "재직증명" },
   { key: "career_cert", label: "경력증명서 신청", short: "경력증명" },
+  {
+    key: "attendance_correction",
+    label: "근무시각 조정 신청",
+    short: "근무조정",
+  },
 ];
 
 export type ApprovalRow = {
