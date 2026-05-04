@@ -8,6 +8,7 @@ import {
   createReinstatementAction,
   createEmploymentCertAction,
   createCareerCertAction,
+  createAttendanceCorrectionAction,
 } from "./actions";
 import { APPROVAL_TYPES, type ApprovalType } from "@/lib/approvals";
 import {
@@ -172,6 +173,43 @@ export default async function NewApprovalPage({
               min: 1,
               max: 10,
               defaultValue: 1,
+            },
+          ]}
+        />
+      )}
+      {type === "attendance_correction" && (
+        <SimpleForm
+          candidates={candidates}
+          defaultApproverId={defaultApproverId}
+          action={createAttendanceCorrectionAction}
+          fields={[
+            {
+              kind: "date",
+              name: "correction_date",
+              label: "정정 대상일",
+              required: true,
+            },
+            {
+              kind: "text",
+              name: "check_in_time",
+              label: "정정 후 출근 (HH:MM)",
+              maxLength: 5,
+              placeholder: "09:00",
+            },
+            {
+              kind: "text",
+              name: "check_out_time",
+              label: "정정 후 퇴근 (HH:MM)",
+              maxLength: 5,
+              placeholder: "18:00",
+            },
+            {
+              kind: "textarea",
+              name: "reason",
+              label: "정정 사유",
+              required: true,
+              maxLength: 500,
+              rows: 3,
             },
           ]}
         />

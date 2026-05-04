@@ -291,6 +291,11 @@ export default async function ApprovalDetailPage({
         {row.type === "career_cert" && (
           <CareerCertDetails payload={row.payload as CareerCertP} />
         )}
+        {row.type === "attendance_correction" && (
+          <AttendanceCorrectionDetails
+            payload={row.payload as AttendanceCorrectionP}
+          />
+        )}
       </section>
 
       <section style={card}>
@@ -343,6 +348,12 @@ type CareerCertP = {
   period_start?: string;
   period_end?: string;
   copies: number;
+};
+type AttendanceCorrectionP = {
+  correction_date: string;
+  check_in_time?: string;
+  check_out_time?: string;
+  reason: string;
 };
 type Person =
   | {
@@ -576,6 +587,27 @@ function CareerCertDetails({ payload }: { payload: CareerCertP }) {
       </dd>
       <dt>발급 부수</dt>
       <dd>{payload.copies}부</dd>
+    </dl>
+  );
+}
+
+function AttendanceCorrectionDetails({
+  payload,
+}: {
+  payload: AttendanceCorrectionP;
+}) {
+  return (
+    <dl style={dl}>
+      <dt>정정 대상일</dt>
+      <dd>{payload.correction_date}</dd>
+      <dt>정정 후 출근</dt>
+      <dd>{payload.check_in_time || "-"}</dd>
+      <dt>정정 후 퇴근</dt>
+      <dd>{payload.check_out_time || "-"}</dd>
+      <dt>사유</dt>
+      <dd style={{ whiteSpace: "pre-wrap" }}>
+        <Linkify text={payload.reason} />
+      </dd>
     </dl>
   );
 }

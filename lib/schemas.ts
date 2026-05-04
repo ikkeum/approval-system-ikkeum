@@ -41,12 +41,29 @@ export const CareerCertPayload = z.object({
   copies: z.number().int().min(1).max(10),
 });
 
+const TimeStr = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+export const AttendanceCorrectionPayload = z
+  .object({
+    correction_date: DateStr,
+    check_in_time: z.union([TimeStr, z.literal("")]).optional().default(""),
+    check_out_time: z.union([TimeStr, z.literal("")]).optional().default(""),
+    reason: z.string().min(1).max(500),
+  })
+  .refine((v) => !!v.check_in_time || !!v.check_out_time, {
+    message: "출근/퇴근 중 최소 하나는 정정 값이 필요합니다.",
+    path: ["check_in_time"],
+  });
+
 export type LeavePayloadT = z.infer<typeof LeavePayload>;
 export type ExpensePayloadT = z.infer<typeof ExpensePayload>;
 export type LeaveOfAbsencePayloadT = z.infer<typeof LeaveOfAbsencePayload>;
 export type ReinstatementPayloadT = z.infer<typeof ReinstatementPayload>;
 export type EmploymentCertPayloadT = z.infer<typeof EmploymentCertPayload>;
 export type CareerCertPayloadT = z.infer<typeof CareerCertPayload>;
+export type AttendanceCorrectionPayloadT = z.infer<
+  typeof AttendanceCorrectionPayload
+>;
 
 export const SignupInput = z.object({
   email: z.string().email(),
