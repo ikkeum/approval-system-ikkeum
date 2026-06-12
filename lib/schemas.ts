@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+// 직인 SVG 텍스트로 들어가는 이름 — HTML/SVG 메타문자 차단 (XSS 방어 1차 레이어)
+export const PersonName = z
+  .string()
+  .min(1)
+  .max(40)
+  .regex(/^[가-힣a-zA-Z .·-]+$/, "이름은 한글/영문/공백/(. · -)만 가능합니다.");
+
 export const LeavePayload = z.object({
   leaveType: z.enum(["연차", "오전반차", "오후반차"]),
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -68,7 +75,7 @@ export type AttendanceCorrectionPayloadT = z.infer<
 export const SignupInput = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(72),
-  name: z.string().min(1).max(40),
+  name: PersonName,
 });
 
 export const LoginInput = z.object({
