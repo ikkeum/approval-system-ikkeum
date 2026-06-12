@@ -5,7 +5,9 @@ import { createClient } from "@supabase/supabase-js";
  * Service role 클라이언트. RLS를 우회합니다.
  * 절대 브라우저 번들에 포함되어서는 안 됩니다.
  *   - 서버 액션 / Route Handler / Server Component 내부에서만 사용
- *   - 호출 전에 반드시 호출자의 role === 'admin' 을 확인할 것
+ *   - 호출 전에 반드시 인가 검증을 마칠 것:
+ *     admin 작업은 role === 'admin', 사용자 흐름(기안 제출·출퇴근)은
+ *     세션 user 본인 소유 + 상태 검증 후 본인 행에만 쓸 것
  */
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

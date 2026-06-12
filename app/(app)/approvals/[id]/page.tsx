@@ -13,6 +13,7 @@ import type {
 } from "@/lib/approvals";
 import { autoRoutedApproverId, listApproverCandidates } from "@/lib/approvers";
 import { loadTemplateById, type ChainStep } from "@/lib/templates";
+import { sanitizeStampSvg } from "@/lib/stamp-svg";
 
 const ACTION_KO: Record<string, string> = {
   submit: "제출",
@@ -44,22 +45,6 @@ function Linkify({ text }: { text: string | null | undefined }) {
       )}
     </>
   );
-}
-
-/**
- * sign-generator 는 viewBox 없이 width/height 만 세팅하므로,
- * CSS로 SVG 를 축소하면 내용이 clipping 된다. viewBox 를 주입해 scalable 하게.
- */
-function normalizeStampSvg(svg: string | null | undefined): string {
-  if (!svg) return "";
-  if (/viewBox\s*=/.test(svg)) return svg;
-  const m = svg.match(/<svg([^>]*)>/);
-  if (!m) return svg;
-  const attrs = m[1];
-  const w = attrs.match(/\bwidth\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
-  const h = attrs.match(/\bheight\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
-  if (!w || !h) return svg;
-  return svg.replace(/<svg([^>]*)>/, `<svg$1 viewBox="0 0 ${w} ${h}">`);
 }
 
 type StepView = {
@@ -472,7 +457,7 @@ function ApprovalStep({
             }}
             aria-label={`${person.name} 직인`}
             dangerouslySetInnerHTML={{
-              __html: normalizeStampSvg(person.stamp_svg),
+              __html: sanitizeStampSvg(person.stamp_svg),
             }}
           />
         )}

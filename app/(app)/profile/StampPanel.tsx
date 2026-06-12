@@ -2,18 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-function normalizeStampSvg(svg: string | null | undefined): string {
-  if (!svg) return "";
-  if (/viewBox\s*=/.test(svg)) return svg;
-  const m = svg.match(/<svg([^>]*)>/);
-  if (!m) return svg;
-  const attrs = m[1];
-  const w = attrs.match(/\bwidth\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
-  const h = attrs.match(/\bheight\s*=\s*["'](\d+(?:\.\d+)?)/)?.[1];
-  if (!w || !h) return svg;
-  return svg.replace(/<svg([^>]*)>/, `<svg$1 viewBox="0 0 ${w} ${h}">`);
-}
+import { sanitizeStampSvg } from "@/lib/stamp-svg";
 
 export default function StampPanel({
   name,
@@ -79,7 +68,7 @@ export default function StampPanel({
               borderRadius: 8,
               background: "#FAFBFC",
             }}
-            dangerouslySetInnerHTML={{ __html: normalizeStampSvg(svg) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeStampSvg(svg) }}
           />
           <button onClick={() => generate(true)} disabled={loading} style={btn}>
             {loading ? "재생성 중..." : "다시 생성"}

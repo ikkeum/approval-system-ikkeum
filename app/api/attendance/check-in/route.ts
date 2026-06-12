@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getClientIp } from "@/lib/ip";
 import { isIpAllowed, isWeekend, todayKst } from "@/lib/attendance";
 
@@ -54,7 +55,11 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: existing, error: selErr } = await supabase
+  // RLS 가 attendances 직접 쓰기를 차단하므로(근태 위조 방지),
+  // IP·휴일 검증을 통과한 이 라우트만 service_role 로 기록한다. user_id 는 세션 값만 사용.
+  const admin = createAdminClient();
+
+  const { data: existing, error: selErr } = await admin
     .from("attendances")
     .select("*")
     .eq("user_id", user.id)
@@ -69,17 +74,18 @@ export async function POST(request: Request) {
   }
 
   if (existing) {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("attendances")
       .update({ check_in_at: now, check_in_ip: ip })
       .eq("id", existing.id)
+      .eq("user_id", user.id)
       .select("*")
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ attendance: data, alreadyCheckedIn: false });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("attendances")
     .insert({
       user_id: user.id,

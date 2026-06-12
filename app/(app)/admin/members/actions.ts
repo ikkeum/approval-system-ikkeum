@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PersonName } from "@/lib/schemas";
 
 async function assertAdmin(): Promise<{ userId: string } | { error: string }> {
   const supabase = await createClient();
@@ -30,7 +31,7 @@ const DateStr = z
 
 const InviteInput = z.object({
   email: z.string().email(),
-  name: z.string().min(1).max(40),
+  name: PersonName,
   dept: z.string().max(40).optional(),
   role: RoleEnum.default("member"),
   manager_id: z.string().uuid().optional().or(z.literal("")),

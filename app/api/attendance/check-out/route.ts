@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getClientIp } from "@/lib/ip";
 import { isIpAllowed, todayKst, yesterdayKst } from "@/lib/attendance";
 
@@ -26,8 +27,12 @@ export async function POST(request: Request) {
   const todayDate = todayKst();
   const yesterdayDate = yesterdayKst();
 
+  // RLS 가 attendances 직접 쓰기를 차단하므로(근태 위조 방지),
+  // IP 검증을 통과한 이 라우트만 service_role 로 기록한다. user_id 는 세션 값만 사용.
+  const admin = createAdminClient();
+
   // 1) 오늘 행 우선
-  const { data: today, error: selErr } = await supabase
+  const { data: today, error: selErr } = await admin
     .from("attendances")
     .select("*")
     .eq("user_id", user.id)
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
 
   // 2) 자정 넘어 퇴근: 어제 행이 미퇴근이면 폴백
   if (!target) {
-    const { data: yesterday } = await supabase
+    const { data: yesterday } = await admin
       .from("attendances")
       .select("*")
       .eq("user_id", user.id)
@@ -59,10 +64,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("attendances")
     .update({ check_out_at: now, check_out_ip: ip })
     .eq("id", target.id)
+    .eq("user_id", user.id)
     .select("*")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
