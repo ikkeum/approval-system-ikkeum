@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { insertLeaveEvent } from "@/lib/google-calendar";
 import { resolveChainApprovers } from "@/lib/approvers";
 import { loadTemplateById } from "@/lib/templates";
@@ -130,12 +131,16 @@ export async function submitAction(
   }
   firstPending.status = "PENDING";
 
-  const { error: stepErr } = await supabase
+  // RLS 가 기안자의 step INSERT / PENDING 직접 설정을 차단하므로,
+  // 위에서 author·DRAFT 검증을 마친 제출 쓰기는 service_role 로 수행한다.
+  const admin = createAdminClient();
+
+  const { error: stepErr } = await admin
     .from("approval_steps")
     .insert(stepRows);
   if (stepErr) return { error: stepErr.message };
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("approvals")
     .update({
       status: "PENDING",
@@ -143,10 +148,12 @@ export async function submitAction(
       current_step: firstPending.step_index,
       total_steps: template.chain.length,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("author_id", user.id)
+    .eq("status", "DRAFT");
   if (error) {
     // 정리: step 행 롤백 (best effort)
-    await supabase.from("approval_steps").delete().eq("approval_id", id);
+    await admin.from("approval_steps").delete().eq("approval_id", id);
     return { error: error.message };
   }
 
