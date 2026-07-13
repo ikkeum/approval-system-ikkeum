@@ -19,6 +19,7 @@ import {
 } from "@/lib/templates";
 import { resolveChainApprovers } from "@/lib/approvers";
 import { notifyApprovalEvent } from "@/lib/notifications";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type NewState = { error?: string } | null;
 
@@ -131,7 +132,11 @@ async function insertApprovalWithSteps(
   if (ie) return { error: ie.message };
 
   const approvalId = inserted!.id as number;
-  const { error: se } = await supabase.from("approval_steps").insert(
+
+  // RLS 가 기안자의 step INSERT 를 차단하므로, 위에서 author 검증을 마친
+  // (approvals insert가 author_id=auth.uid() 를 강제) 제출 쓰기는 service_role 로 수행한다.
+  const admin = createAdminClient();
+  const { error: se } = await admin.from("approval_steps").insert(
     stepRows.map((r) => ({ ...r, approval_id: approvalId })),
   );
   if (se) {
